@@ -209,8 +209,8 @@ Tests werden automatisch eingeplant, in Deload-Wochen bzw. ausgeruhten Tagen, ni
 
 | # | Inhalt | Ergebnis |
 |---|---|---|
-| M1 | Projekt-Setup, PWA-Grundgerüst, Profil + Onboarding (inkl. PAR-Q+, Ziele), lokale Datenbank, Export/Import | Installierbare App mit Profil |
-| M2 | Übungskatalog + Variantenleitern, Kraft-Einstufungstest, Training-Player mit Satz-Logging, Satzregeln + doppelte Progression | Erstes nutzbares Krafttraining |
+| ✅ M1 | Projekt-Setup, PWA-Grundgerüst, Profil + Onboarding (inkl. PAR-Q+, Ziele), lokale Datenbank, Export/Import | Installierbare App mit Profil |
+| ✅ M2 | Übungskatalog + Variantenleitern, Kraft-Einstufungstest, Training-Player mit Satz-Logging, Satzregeln + doppelte Progression | Erstes nutzbares Krafttraining |
 | M3 | Ausdauer: Erfassung, Feldtests (CS, Talktest), Zonen, Einzellauf-Regel | Lauf/Rad integriert |
 | M4 | Täglicher Check-in, Ampel, Sicherheits-Stopps, Schmerzregeln | Tagesanpassung |
 | M5 | Wochenplaner mit flexibler Zeit, Volumensteuerung, Deload, Änderungsprotokoll + Überschreiben | Volle Feedback-Loops |

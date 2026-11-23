@@ -7,6 +7,9 @@
   import Home from './views/Home.svelte';
   import ProfileView from './views/ProfileView.svelte';
   import DataView from './views/DataView.svelte';
+  import StrengthView from './views/StrengthView.svelte';
+  import Player from './views/Player.svelte';
+  import Placement from './views/Placement.svelte';
 
   const { needRefresh, updateServiceWorker } = useRegisterSW();
 
@@ -16,6 +19,7 @@
 
   const tabs: { id: View; label: string; icon: string }[] = [
     { id: 'home', label: 'Heute', icon: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10' },
+    { id: 'strength', label: 'Kraft', icon: 'M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12' },
     { id: 'profile', label: 'Profil', icon: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6' },
     { id: 'data', label: 'Daten', icon: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zm0 0v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3' }
   ];
@@ -26,6 +30,14 @@
 {:else if app.editing}
   {#key app.editing}
     <ProfileWizard initial={app.editing.profile} mode={app.editing.mode} startStep={app.editing.step} />
+  {/key}
+{:else if app.active && app.session}
+  {#key app.session.id}
+    <Player profile={app.active} initial={app.session} />
+  {/key}
+{:else if app.active && app.placement}
+  {#key app.placement}
+    <Placement profile={app.active} half={app.placement} />
   {/key}
 {:else if !app.active}
   <main class="welcome">
@@ -43,6 +55,8 @@
 {:else}
   {#if app.view === 'home'}
     <Home profile={app.active} />
+  {:else if app.view === 'strength'}
+    <StrengthView profile={app.active} />
   {:else if app.view === 'profile'}
     <ProfileView profile={app.active} />
   {:else}

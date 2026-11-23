@@ -1,8 +1,9 @@
 import { db, getMeta, saveProfile, setMeta, deleteProfile as dbDelete } from './db';
 import { backupDue } from './backup';
-import type { Profile } from './types';
+import { activeSession } from './training';
+import type { Profile, StrengthSession } from './types';
 
-export type View = 'home' | 'profile' | 'data';
+export type View = 'home' | 'strength' | 'profile' | 'data';
 
 class AppState {
   loaded = $state(false);
@@ -12,6 +13,10 @@ class AppState {
   /** Profil, das gerade im Assistenten bearbeitet/angelegt wird */
   editing = $state<{ profile: Profile; mode: 'new' | 'edit'; step: number } | null>(null);
   lastBackupAt = $state<string | null>(null);
+  /** Laufende Krafteinheit (Vollbild-Player) */
+  session = $state<StrengthSession | null>(null);
+  /** Laufende Einstufung */
+  placement = $state<'lower' | 'upper' | null>(null);
 
   active = $derived(this.profiles.find((p) => p.id === this.activeId) ?? null);
   /** Erinnerung 14 Tage nach letzter Sicherung bzw. nach Anlegen des ersten Profils */
@@ -25,6 +30,7 @@ class AppState {
     const stored = await getMeta<string | null>('activeProfileId', null);
     this.activeId = this.profiles.some((p) => p.id === stored) ? stored : (this.profiles[0]?.id ?? null);
     this.lastBackupAt = await getMeta<string | null>('lastBackupAt', null);
+    if (!this.loaded && this.activeId) this.session = await activeSession(this.activeId);
     this.loaded = true;
   }
 

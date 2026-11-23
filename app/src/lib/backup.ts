@@ -1,10 +1,12 @@
 // Export/Import als JSON-Datei (T8-Ersatz ohne Cloud). Daten verlassen das Gerät nur,
 // wenn der Nutzer die Datei selbst speichert.
 import { db, getMeta, setMeta, type CoachDB } from './db';
-import type { ChangeLogEntry, Profile, WeightEntry } from './types';
+import type {
+  ChangeLogEntry, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
+} from './types';
 
 export const BACKUP_FORMAT = 'fitness-coach-backup';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 export const BACKUP_REMINDER_DAYS = 14;
 
 export interface Backup {
@@ -15,6 +17,11 @@ export interface Backup {
   weights: WeightEntry[];
   changes: ChangeLogEntry[];
   activeProfileId: string | null;
+  // ab Version 2
+  patternStates?: PatternState[];
+  sessions?: StrengthSession[];
+  feedback?: ExerciseFeedback[];
+  meta?: Meta[];
 }
 
 export async function createBackup(d: CoachDB = db): Promise<Backup> {
@@ -25,7 +32,11 @@ export async function createBackup(d: CoachDB = db): Promise<Backup> {
     profiles: await d.profiles.toArray(),
     weights: await d.weights.toArray(),
     changes: await d.changes.toArray(),
-    activeProfileId: await getMeta<string | null>('activeProfileId', null, d)
+    activeProfileId: await getMeta<string | null>('activeProfileId', null, d),
+    patternStates: await d.patternStates.toArray(),
+    sessions: await d.sessions.toArray(),
+    feedback: await d.feedback.toArray(),
+    meta: (await d.meta.toArray()).filter((m) => m.key !== 'lastBackupAt')
   };
 }
 
@@ -57,13 +68,18 @@ export function parseBackup(text: string): Backup {
 
 /** Ersetzt alle Daten auf dem Gerät durch die Sicherung. */
 export async function restoreBackup(b: Backup, d: CoachDB = db): Promise<void> {
-  await d.transaction('rw', [d.profiles, d.weights, d.changes, d.meta], async () => {
-    await d.profiles.clear();
-    await d.weights.clear();
-    await d.changes.clear();
+  const tables = [d.profiles, d.weights, d.changes, d.meta, d.patternStates, d.sessions, d.feedback];
+  await d.transaction('rw', tables, async () => {
+    const lastBackup = await d.meta.get('lastBackupAt');
+    for (const t of tables) await t.clear();
+    if (lastBackup) await d.meta.put(lastBackup);
     await d.profiles.bulkPut(b.profiles);
     await d.weights.bulkPut(b.weights);
     await d.changes.bulkPut(b.changes);
+    await d.patternStates.bulkPut(b.patternStates ?? []);
+    await d.sessions.bulkPut(b.sessions ?? []);
+    await d.feedback.bulkPut(b.feedback ?? []);
+    await d.meta.bulkPut((b.meta ?? []).filter((m) => m.key !== 'lastBackupAt'));
     const active = b.activeProfileId && b.profiles.some((p) => p.id === b.activeProfileId)
       ? b.activeProfileId
       : (b.profiles[0]?.id ?? null);

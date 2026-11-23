@@ -55,9 +55,11 @@
   {/if}
 
   <div class="card accent">
-    <h3>Training startet mit Meilenstein 2</h3>
-    <p class="small">Dein Profil ist angelegt. Als Nächstes kommen der Übungskatalog, die Kraft-Einstufung und der Trainings-Player. Danach Laufen/Rad mit Feldtests und der tägliche Check-in.</p>
+    <h3>Krafttraining</h3>
+    <p class="small">Einheit passend zu deiner Zeit – die App wählt die Übungen nach deinem Wochenvolumen.</p>
+    <button class="primary block" onclick={() => (app.view = 'strength')}>Zum Krafttraining</button>
   </div>
+  <p class="small muted">Laufen/Rad mit Feldtests und der tägliche Check-in folgen in den nächsten Meilensteinen.</p>
 
   <h2>Dein Ausgangspunkt</h2>
   <div class="grid2">

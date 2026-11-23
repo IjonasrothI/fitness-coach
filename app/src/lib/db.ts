@@ -1,11 +1,16 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { ChangeLogEntry, Meta, Profile, WeightEntry } from './types';
+import type {
+  ChangeLogEntry, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
+} from './types';
 
 export class CoachDB extends Dexie {
   profiles!: EntityTable<Profile, 'id'>;
   weights!: EntityTable<WeightEntry, 'id'>;
   changes!: EntityTable<ChangeLogEntry, 'id'>;
   meta!: EntityTable<Meta, 'key'>;
+  patternStates!: EntityTable<PatternState, 'id'>;
+  sessions!: EntityTable<StrengthSession, 'id'>;
+  feedback!: EntityTable<ExerciseFeedback, 'id'>;
 
   constructor(name = 'fitness-coach') {
     super(name);
@@ -14,6 +19,11 @@ export class CoachDB extends Dexie {
       weights: '++id, profileId, [profileId+date]',
       changes: '++id, profileId, at',
       meta: 'key'
+    });
+    this.version(2).stores({
+      patternStates: 'id, profileId',
+      sessions: 'id, profileId, status, startedAt',
+      feedback: '++id, profileId'
     });
   }
 }
@@ -26,13 +36,13 @@ export async function getMeta<T>(key: string, fallback: T, d: CoachDB = db): Pro
 }
 
 export async function setMeta(key: string, value: unknown, d: CoachDB = db): Promise<void> {
-  await d.meta.put({ key, value });
+  await d.meta.put({ key, value: plain(value) });
 }
 
 /** Speichert ein Profil und protokolliert das Gewicht, falls es sich geändert hat. */
 export async function saveProfile(p: Profile, d: CoachDB = db): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
-  const updated: Profile = { ...$plain(p), updatedAt: new Date().toISOString() };
+  const updated: Profile = { ...plain(p), updatedAt: new Date().toISOString() };
   await d.transaction('rw', d.profiles, d.weights, async () => {
     const before = await d.profiles.get(p.id);
     await d.profiles.put(updated);
@@ -45,14 +55,14 @@ export async function saveProfile(p: Profile, d: CoachDB = db): Promise<void> {
 }
 
 export async function deleteProfile(id: string, d: CoachDB = db): Promise<void> {
-  await d.transaction('rw', d.profiles, d.weights, d.changes, async () => {
+  const tables = [d.profiles, d.weights, d.changes, d.patternStates, d.sessions, d.feedback];
+  await d.transaction('rw', tables, async () => {
     await d.profiles.delete(id);
-    await d.weights.where('profileId').equals(id).delete();
-    await d.changes.where('profileId').equals(id).delete();
+    for (const t of tables.slice(1)) await t.where('profileId').equals(id).delete();
   });
 }
 
 /** Entfernt Svelte-Proxies, damit IndexedDB klonen kann. */
-function $plain<T>(v: T): T {
-  return JSON.parse(JSON.stringify(v)) as T;
+export function plain<T>(v: T): T {
+  return v === undefined ? v : (JSON.parse(JSON.stringify(v)) as T);
 }

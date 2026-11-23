@@ -7,6 +7,12 @@
   import { app } from '../lib/state.svelte';
   import type { CheckIn, Profile } from '../lib/types';
   import CheckInForm from './CheckInForm.svelte';
+  import { getWeek } from '../lib/weekStore';
+  import { itemStatus } from '../lib/planner';
+  import { listEndurance } from '../lib/enduranceStore';
+  import { recentSessions, startSession } from '../lib/training';
+  import { SPORT_LABELS, TYPE_LABELS } from '../lib/endurance';
+  import type { EnduranceSession, PlannedItem, StrengthSession, WeekPlan } from '../lib/types';
 
   let { profile }: { profile: Profile } = $props();
 
@@ -16,7 +22,24 @@
   let formOpen = $state(false);
   let loaded = $state(false);
 
+  let week = $state<WeekPlan | null>(null);
+  let strengthDone = $state<StrengthSession[]>([]);
+  let enduranceDone = $state<EnduranceSession[]>([]);
+  let todayItems = $derived(week?.days.find((x) => x.date === todayKey())?.items ?? []);
+
+  async function startItem(it: PlannedItem) {
+    if (it.kind === 'strength') {
+      app.session = await startSession(profile, it.minutes);
+    } else {
+      app.plannedEndurance = it;
+      app.view = 'endurance';
+    }
+  }
+
   async function loadCheckIn() {
+    week = await getWeek(profile);
+    strengthDone = await recentSessions(profile.id, 2);
+    enduranceDone = await listEndurance(profile.id);
     today = await getCheckIn(profile.id);
     history = await checkinHistory(profile.id, 40);
     ready = today ? readiness(today, history, profile) : null;
@@ -132,21 +155,31 @@
     <div class="card warn">
       <h3>Sicherung fällig</h3>
       <p class="small">Deine Daten liegen nur auf diesem iPhone. Speichere alle 2 Wochen eine Sicherung in „Dateien".</p>
-      <button class="ghost" onclick={() => (app.view = 'data')}>Zur Sicherung</button>
+      <button class="ghost" onclick={() => (app.view = 'more')}>Zur Sicherung</button>
     </div>
   {/if}
 
-  <div class="card accent">
-    <h3>Krafttraining</h3>
-    <p class="small">Einheit passend zu deiner Zeit – die App wählt die Übungen nach deinem Wochenvolumen.</p>
-    <button class="primary block" onclick={() => (app.view = 'strength')}>Zum Krafttraining</button>
-  </div>
   <div class="card">
-    <h3>Laufen & Rad</h3>
-    <p class="small">Vorschlag für heute, Zonen aus deinen Feldtests und Schutz vor zu großen Sprüngen beim langen Lauf.</p>
-    <button class="block" onclick={() => (app.view = 'endurance')}>Zur Ausdauer</button>
+    <h3>Heute geplant{week?.deload ? ' · Entlastungswoche' : ''}</h3>
+    {#if ready?.caps.noTraining}
+      <p class="small">Heute Pause – siehe Tagesform oben.</p>
+    {:else if todayItems.length === 0}
+      <p class="small muted">Heute ist kein Training geplant. Lust trotzdem? Unter Kraft oder Ausdauer findest du eine passende Einheit.</p>
+    {:else}
+      {#each todayItems as it (it.id)}
+        {@const st = itemStatus(it, todayKey(), todayKey(), strengthDone, enduranceDone, todayItems)}
+        <div class="plan-item">
+          <span>
+            <b>{it.kind === 'strength' ? 'Krafttraining' : `${it.sport ? SPORT_LABELS[it.sport] : ''} · ${it.type ? TYPE_LABELS[it.type] : ''}`}</b><br />
+            <span class="small muted">{it.minutes} min{ready && ready.light !== 'green' ? ' · an Tagesform angepasst' : ''}</span>
+          </span>
+          {#if st === 'done'}<span class="done">✓ erledigt</span>
+          {:else}<button class="primary" onclick={() => startItem(it)}>Start</button>{/if}
+        </div>
+      {/each}
+    {/if}
+    <button class="ghost" onclick={() => (app.view = 'week')}>Zur Woche</button>
   </div>
-  <p class="small muted">Die automatische Wochenplanung folgt im nächsten Meilenstein.</p>
 
   <h2>Dein Ausgangspunkt</h2>
   <div class="grid2">
@@ -205,6 +238,9 @@
   .red .dot { background: var(--danger); }
   .actions { flex-wrap: wrap; justify-content: space-between; }
   .actions button { flex: none; min-height: 40px; }
+  .plan-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .plan-item button { flex: none; min-height: 40px; padding: 8px 18px; }
+  .done { color: var(--accent); font-weight: 600; font-size: 14px; }
   .trend { display: flex; gap: 5px; justify-content: center; margin: 4px 0 12px; }
   .tdot { width: 14px; height: 14px; border-radius: 50%; background: var(--surface-2); }
   .tdot.green { background: var(--accent); }

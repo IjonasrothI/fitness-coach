@@ -9,6 +9,11 @@
   import { deleteEndurance, listEndurance, listTests } from '../lib/enduranceStore';
   import { recentSessions } from '../lib/training';
   import { todayReadiness } from '../lib/checkinStore';
+  import { app } from '../lib/state.svelte';
+  import { describePlanned } from '../lib/endurance';
+  import { getWeek } from '../lib/weekStore';
+  import { todayKey } from '../lib/readiness';
+  import type { PlannedItem } from '../lib/types';
   import type { Readiness } from '../lib/readiness';
   import type { EnduranceSession, EnduranceTest, Profile, Sport, StrengthSession, TestKind } from '../lib/types';
   import EnduranceLog from './EnduranceLog.svelte';
@@ -20,6 +25,8 @@
   let tests = $state<EnduranceTest[]>([]);
   let strength = $state<StrengthSession[]>([]);
   let ready = $state<Readiness | null>(null);
+  let planned = $state<PlannedItem | null>(null);
+  let deloadWeek = $state(false);
   let mode = $state<'main' | 'log' | 'test'>('main');
   let testKind = $state<TestKind>('cs');
   let prefill = $state<{ sport: Sport; type: Suggestion['type']; minutes: number } | undefined>(undefined);
@@ -38,9 +45,14 @@
     tests = await listTests(profile.id);
     strength = await recentSessions(profile.id, 14);
     ready = await todayReadiness(profile);
+    const w = await getWeek(profile);
+    deloadWeek = w.deload;
+    planned = app.plannedEndurance ?? w.days.find((x) => x.date === todayKey())?.items.find((x) => x.kind === 'endurance') ?? null;
+    app.plannedEndurance = null;
   }
   onMount(refresh);
 
+  let plannedSug = $derived(planned?.sport && planned.type ? describePlanned(profile, planned.sport, planned.type, planned.minutes, sessions, tests, ready?.caps, deloadWeek) : null);
   let sug = $derived(suggest(profile, sport, minutes, sessions, strength, tests, new Date(), ready?.caps));
   let lr = $derived(longestRun(sessions, profile));
   let cs = $derived.by(() => { const t = latestTest(tests, 'cs'); return t ? criticalSpeed(t) : null; });
@@ -68,8 +80,8 @@
     return out;
   });
 
-  function openLog(fromSuggestion: boolean) {
-    prefill = fromSuggestion ? { sport: sug.sport, type: sug.type, minutes: sug.minutes } : undefined;
+  function openLog(fromSuggestion: boolean, from: Suggestion = sug) {
+    prefill = fromSuggestion ? { sport: from.sport, type: from.type, minutes: from.minutes } : undefined;
     mode = 'log';
     window.scrollTo(0, 0);
   }
@@ -125,8 +137,20 @@
   {#if sports.length === 0}
     <div class="card warn"><p class="small">Im Profil (Ausdauer) ist keine Sportart aktiv.</p></div>
   {:else}
+  {#if plannedSug}
+    <div class="card planned">
+      <h3>Heute geplant</h3>
+      <p class="small muted">{SPORT_LABELS[plannedSug.sport]} · {TYPE_LABELS[plannedSug.type]} · {plannedSug.minutes} min{plannedSug.maxKm ? ` · max. ${fmt(plannedSug.maxKm)} km` : ''}</p>
+      <h2>{plannedSug.title}</h2>
+      <ul class="small">{#each plannedSug.structure as x (x)}<li>{x}</li>{/each}</ul>
+      {#if plannedSug.target}<p class="small target">{plannedSug.target}</p>{/if}
+      {#each plannedSug.why as w (w)}<p class="small muted">{w}</p>{/each}
+      {#if plannedSug.minutes > 0}<button class="primary block" onclick={() => openLog(true, plannedSug!)}>Erledigt – eintragen</button>{/if}
+    </div>
+  {/if}
+
   <div class="card">
-    <h3>Vorschlag</h3>
+    <h3>{plannedSug ? 'Andere Einheit – Vorschlag' : 'Vorschlag'}</h3>
     <div class="chips">
       {#each sports as sp (sp)}<button class:on={sport === sp} onclick={() => (sport = sp)}>{SPORT_LABELS[sp]}</button>{/each}
     </div>
@@ -254,7 +278,9 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
   .chips button { border: 1.5px solid var(--line); background: var(--surface); font-weight: 500; padding: 8px 12px; min-height: 40px; font-size: 15px; }
   .chips button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 650; }
-  .sug h2 { margin: 4px 0 6px; }
+  .sug h2, .planned h2 { margin: 4px 0 6px; }
+  .planned ul { padding-left: 20px; margin: 6px 0; }
+  .planned { border: 1.5px solid var(--accent); }
   .sug ul { padding-left: 20px; margin: 6px 0; }
   .target { font-weight: 600; color: var(--accent); }
   .vol { display: grid; grid-template-columns: 80px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }

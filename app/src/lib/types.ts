@@ -123,6 +123,9 @@ export interface ChangeLogEntry {
   prev?: PatternState;
   next?: PatternState;
   sessionId?: string;
+  /** Art der Änderung für „Rückgängig" (Standard: Übungsstufe) */
+  kind?: 'pattern' | 'availability' | 'deload';
+  prevData?: unknown;
 }
 
 export interface Meta {
@@ -211,6 +214,8 @@ export interface PlannedExercise {
   technique?: Technique;
   /** Tagesform-Deckel (M4): mindestens so viele Wdh. in Reserve */
   minRir?: number;
+  /** Entlastungswoche (M5) */
+  deload?: boolean;
 }
 
 export interface PainEntry {
@@ -318,4 +323,35 @@ export interface CheckIn {
   cycleSymptoms?: number;
   /** Nutzer übersteuert Gelb/Rot (F21) */
   override?: boolean;
+}
+
+// ---------- Wochenplan (M5) ----------
+
+export interface PlannedItem {
+  id: string;
+  kind: 'strength' | 'endurance';
+  sport?: Sport;
+  type?: EnduranceType;
+  minutes: number;
+  /** vom Nutzer verschoben/geändert – bleibt beim Neuplanen stehen (F21) */
+  userEdited?: boolean;
+}
+
+export interface DayPlan {
+  date: string; // YYYY-MM-DD
+  availableMin: number;
+  items: PlannedItem[];
+}
+
+export interface WeekPlan {
+  id: string; // `${profileId}:${weekStart}`
+  profileId: string;
+  weekStart: string; // Montag
+  days: DayPlan[];
+  deload: boolean;
+  /** Woche im Trainingsblock (1 = erste Woche nach Deload) */
+  blockWeek: number;
+  why: string[];
+  createdAt: string;
+  updatedAt: string;
 }

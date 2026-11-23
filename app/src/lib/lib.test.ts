@@ -171,7 +171,7 @@ describe('Training-Service (DB)', async () => {
     await saveProfile(p, d);
     await ensureStates(p, d);
     const b = await createBackup(d);
-    expect(b.version).toBe(4);
+    expect(b.version).toBe(5);
     expect(b.patternStates?.length).toBe(12);
     const e = new CoachDB('t-bk2r-' + Math.random());
     await restoreBackup(parseBackup(JSON.stringify(b)), e);
@@ -216,5 +216,51 @@ describe('Tagesform in der Kraftplanung (M4)', async () => {
     const x = s.plan[0]!;
     for (let i = 0; i < x.sets; i++) s.sets.push({ pattern: x.pattern, exerciseId: x.exerciseId, bandLevel: x.bandLevel, reps: 40, rir: 4, at: new Date().toISOString() });
     expect(await finishSession(p, s, { sRpe: 4, enjoyment: 3, pain: [] }, d)).toHaveLength(0);
+  });
+});
+
+describe('Wochenplan (M5)', async () => {
+  const ws = await import('./weekStore');
+  const { mondayOf, addDays } = await import('./planner');
+  const { todayKey } = await import('./readiness');
+  const { planSession } = await import('./training');
+
+  it('Woche wird angelegt, Zeitänderung verteilt neu', async () => {
+    const d = new CoachDB('t-week-' + Math.random());
+    const p = profile();
+    await saveProfile(p, d);
+    const w = await ws.getWeek(p, undefined, d);
+    expect(w.days).toHaveLength(7);
+    expect(w.deload).toBe(false);
+    const future = w.days.find((x) => x.date > todayKey() && x.items.length);
+    if (future) {
+      const w2 = await ws.setAvailability(p, w, future.date, 0, d);
+      expect(w2.days.find((x) => x.date === future.date)!.items).toHaveLength(0);
+    }
+  });
+
+  it('nach 5 Wochen im Block → Entlastungswoche, Kraft mit halben Sätzen; Rückgängig hebt sie auf', async () => {
+    const d = new CoachDB('t-deload-' + Math.random());
+    const p = { ...profile(), createdAt: new Date(Date.now() - 40 * 86400000).toISOString() };
+    await saveProfile(p, d);
+    await setMeta(`blockStart:${p.id}`, addDays(mondayOf(todayKey()), -28), d); // aktuelle Woche = Blockwoche 5
+    const w = await ws.getWeek(p, undefined, d);
+    expect(w.blockWeek).toBe(5);
+    expect(w.deload).toBe(true);
+    const plan = await planSession(p, 45, d);
+    expect(plan.every((x) => x.deload && x.minRir === 3)).toBe(true);
+    const changes = await ws.weekChanges(p.id, d);
+    expect(await ws.undoWeekChange(p, changes[0]!, d)).toBe(true);
+    expect((await d.weeks.get(w.id))!.deload).toBe(false);
+  });
+
+  it('nach einer Entlastungswoche beginnt ein neuer Block', async () => {
+    const d = new CoachDB('t-block-' + Math.random());
+    const p = profile();
+    await saveProfile(p, d);
+    const thisWeek = mondayOf(todayKey());
+    await d.weeks.put({ id: `${p.id}:${addDays(thisWeek, -7)}`, profileId: p.id, weekStart: addDays(thisWeek, -7), days: [], deload: true, blockWeek: 5, why: [], createdAt: '', updatedAt: '' });
+    const w = await ws.getWeek(p, undefined, d);
+    expect(w.blockWeek).toBe(1);
   });
 });

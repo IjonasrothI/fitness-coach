@@ -449,3 +449,52 @@ export function targetText(z: Zones, t: 'easy' | 'tempo' | 'intervals', sport: S
   }
   return parts.join(' · ');
 }
+
+/** Beschreibt eine im Wochenplan geplante Einheit, angepasst an die Tagesform. */
+export function describePlanned(
+  p: Profile, sport: Sport, type: EnduranceType, minutes: number, sessions: EnduranceSession[],
+  tests: EnduranceTest[], caps?: Caps, deload = false, now = new Date()
+): Suggestion {
+  const why: string[] = [];
+  if (caps?.noTraining || caps?.recoveryOnly || (caps?.painRegions.some((r) => LEG_REGIONS.includes(r)) && sport === 'run')) {
+    return suggest(p, sport, minutes, sessions, [], tests, now, caps);
+  }
+  let t = type;
+  if ((t === 'intervals' || t === 'tempo') && (caps?.noIntensity || !intenseAllowed(p))) {
+    why.push(caps?.noIntensity ? 'Tagesform: heute locker statt hart – die harte Einheit fällt diese Woche weg.' : 'Intensive Einheiten sind bis zur ärztlichen Freigabe gesperrt.');
+    t = 'easy';
+  }
+  const z = zones(p, tests, sport);
+  const lr = longestRun(sessions, p, now);
+  const cap = sport === 'run' ? (lr.km > 0 ? Math.round(lr.km * 1.1 * 10) / 10 : 5) : undefined;
+  if (deload) why.push('Entlastungswoche: kürzer und locker, dazu 4–6 kurze Steigerungen (je 15–20 s) am Ende (F13).');
+  if (t === 'intervals') {
+    const long = minutes >= 45;
+    const reps = long ? '4 × 4 min' : '5 × 3 min';
+    return {
+      sport, type: t, minutes, title: `Intervalle ${reps}`,
+      structure: ['10 min locker einlaufen/-fahren, 2–3 kurze Steigerungen', `${reps} hart, dazwischen ${long ? '3' : '2'} min locker`, 'Rest locker ausklingen'],
+      target: targetText(z, 'intervals', sport), why: [...why, 'Wochen-Schlüsseleinheit für die VO2max (E22).']
+    };
+  }
+  if (t === 'tempo') {
+    return {
+      sport, type: t, minutes, title: minutes >= 50 ? 'Tempo 3 × 10 min' : 'Tempo 2 × 10 min',
+      structure: ['10 min locker', `${minutes >= 50 ? '3' : '2'} × 10 min zügig, dazwischen 3 min locker`, 'Rest locker'],
+      target: targetText(z, 'tempo', sport), why: [...why, 'Schwellenreiz der Woche (E1).']
+    };
+  }
+  if (t === 'long') {
+    return {
+      sport, type: t, minutes, title: sport === 'run' ? 'Langer lockerer Lauf' : 'Lange Grundlagenfahrt',
+      structure: ['Gleichmäßig locker – ganze Sätze sprechbar', 'Optional: Puls der zweiten Hälfte notieren (Drift)'],
+      target: targetText(z, 'easy', sport), maxKm: cap,
+      why: [...why, ...(cap ? [`Maximal ${cap} km (+10 % auf deinen längsten Lauf der letzten 30 Tage, E14).`] : [])]
+    };
+  }
+  return {
+    sport, type: t, minutes, title: sport === 'run' ? 'Lockerer Lauf' : 'Lockere Fahrt',
+    structure: ['Gleichmäßig locker – Talktest: ganze Sätze sprechen'], target: targetText(z, 'easy', sport),
+    maxKm: cap, why: [...why, 'Lockeres Training ist die Basis (E1).']
+  };
+}

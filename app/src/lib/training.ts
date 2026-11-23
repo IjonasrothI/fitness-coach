@@ -1,5 +1,6 @@
 // Verbindet die Kraft-Engine mit der lokalen Datenbank.
 import { todayReadiness, withPainRegions } from './checkinStore';
+import { isDeloadToday } from './weekStore';
 import { db, getMeta, plain, setMeta, type CoachDB } from './db';
 import type { Readiness } from './readiness';
 import { PATTERNS } from './exercises';
@@ -53,16 +54,21 @@ export async function planSession(p: Profile, minutes: number, d: CoachDB = db, 
   const recent = await recentSessions(p.id, 7, d);
   const rirOffset = await getRirOffset(p.id, d);
   const caps = ready?.caps;
-  const calibrate = calibrationDue(await getLastCalibration(p.id, d)) && !caps?.noIntensity;
+  const deload = await isDeloadToday(p, d);
+  const calibrate = calibrationDue(await getLastCalibration(p.id, d)) && !caps?.noIntensity && !deload;
   const mins = caps?.recoveryOnly ? Math.min(minutes, 20) : minutes;
   const plan = buildSession(eff, states, recent, mins, { rirOffset, calibrate });
-  if (!caps) return plan;
-  return plan.map((x) => ({
-    ...x,
-    sets: caps.recoveryOnly ? Math.min(x.sets, 2) : x.sets,
-    minRir: caps.minRir > 1 ? caps.minRir : undefined,
-    technique: caps.noIntensity ? undefined : x.technique
-  }));
+  if (!caps && !deload) return plan;
+  return plan.map((x) => {
+    let sets = caps?.recoveryOnly ? Math.min(x.sets, 2) : x.sets;
+    let minRir = caps && caps.minRir > 1 ? caps.minRir : undefined;
+    if (deload) {
+      // F13: ~40–50 % weniger Sätze, gleiche Übungen, RIR +2
+      sets = Math.max(1, Math.ceil(sets / 2));
+      minRir = Math.max(minRir ?? 0, 3);
+    }
+    return { ...x, sets, minRir, deload: deload || undefined, technique: caps?.noIntensity || deload ? undefined : x.technique };
+  });
 }
 
 export async function startSession(p: Profile, minutes: number, d: CoachDB = db): Promise<StrengthSession> {

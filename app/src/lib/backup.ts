@@ -2,11 +2,11 @@
 // wenn der Nutzer die Datei selbst speichert.
 import { db, getMeta, setMeta, type CoachDB } from './db';
 import type {
-  ChangeLogEntry, CheckIn, EnduranceSession, EnduranceTest, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
+  ChangeLogEntry, CheckIn, WeekPlan, EnduranceSession, EnduranceTest, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
 } from './types';
 
 export const BACKUP_FORMAT = 'fitness-coach-backup';
-export const BACKUP_VERSION = 4;
+export const BACKUP_VERSION = 5;
 export const BACKUP_REMINDER_DAYS = 14;
 
 export interface Backup {
@@ -27,6 +27,8 @@ export interface Backup {
   tests?: EnduranceTest[];
   // ab Version 4
   checkins?: CheckIn[];
+  // ab Version 5
+  weeks?: WeekPlan[];
 }
 
 export async function createBackup(d: CoachDB = db): Promise<Backup> {
@@ -44,6 +46,7 @@ export async function createBackup(d: CoachDB = db): Promise<Backup> {
     endurance: await d.endurance.toArray(),
     tests: await d.tests.toArray(),
     checkins: await d.checkins.toArray(),
+    weeks: await d.weeks.toArray(),
     meta: (await d.meta.toArray()).filter((m) => m.key !== 'lastBackupAt')
   };
 }
@@ -76,7 +79,7 @@ export function parseBackup(text: string): Backup {
 
 /** Ersetzt alle Daten auf dem Gerät durch die Sicherung. */
 export async function restoreBackup(b: Backup, d: CoachDB = db): Promise<void> {
-  const tables = [d.profiles, d.weights, d.changes, d.meta, d.patternStates, d.sessions, d.feedback, d.endurance, d.tests, d.checkins];
+  const tables = [d.profiles, d.weights, d.changes, d.meta, d.patternStates, d.sessions, d.feedback, d.endurance, d.tests, d.checkins, d.weeks];
   await d.transaction('rw', tables, async () => {
     const lastBackup = await d.meta.get('lastBackupAt');
     for (const t of tables) await t.clear();
@@ -90,6 +93,7 @@ export async function restoreBackup(b: Backup, d: CoachDB = db): Promise<void> {
     await d.endurance.bulkPut(b.endurance ?? []);
     await d.tests.bulkPut(b.tests ?? []);
     await d.checkins.bulkPut(b.checkins ?? []);
+    await d.weeks.bulkPut(b.weeks ?? []);
     await d.meta.bulkPut((b.meta ?? []).filter((m) => m.key !== 'lastBackupAt'));
     const active = b.activeProfileId && b.profiles.some((p) => p.id === b.activeProfileId)
       ? b.activeProfileId

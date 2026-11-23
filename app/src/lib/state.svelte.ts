@@ -1,9 +1,9 @@
 import { db, getMeta, saveProfile, setMeta, deleteProfile as dbDelete } from './db';
 import { backupDue } from './backup';
 import { activeSession } from './training';
-import type { Profile, StrengthSession } from './types';
+import type { PlannedItem, Profile, StrengthSession } from './types';
 
-export type View = 'home' | 'strength' | 'endurance' | 'profile' | 'data';
+export type View = 'home' | 'week' | 'strength' | 'endurance' | 'more';
 
 class AppState {
   loaded = $state(false);
@@ -17,6 +17,8 @@ class AppState {
   session = $state<StrengthSession | null>(null);
   /** Laufende Einstufung */
   placement = $state<'lower' | 'upper' | null>(null);
+  /** Aus dem Wochenplan gewählte Ausdauereinheit */
+  plannedEndurance = $state<PlannedItem | null>(null);
 
   active = $derived(this.profiles.find((p) => p.id === this.activeId) ?? null);
   /** Erinnerung 14 Tage nach letzter Sicherung bzw. nach Anlegen des ersten Profils */
@@ -35,7 +37,12 @@ class AppState {
   }
 
   async save(p: Profile) {
+    const before = this.profiles.find((x) => x.id === p.id);
     await saveProfile(p);
+    if (before && (JSON.stringify(before.availability) !== JSON.stringify(p.availability) || before.goals.focus !== p.goals.focus)) {
+      const { applyProfileAvailability } = await import('./weekStore');
+      await applyProfileAvailability(p);
+    }
     await this.load();
   }
 

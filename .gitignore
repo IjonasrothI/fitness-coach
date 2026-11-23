@@ -1,0 +1,10 @@
+# Separate Achilles-Reha-App (eigenes Projekt, enthält lokale Sicherungen) – nicht veröffentlichen
+/pwa/
+/dist/
+
+node_modules/
+app/dist/
+app/dev-dist/
+.DS_Store
+.claude/
+*.local

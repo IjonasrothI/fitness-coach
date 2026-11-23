@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { fmt } from '../lib/derive';
   import { EXERCISE_BY_ID, MUSCLE_LABELS, PATTERNS, PATTERN_BY_ID, TECHNIQUE_LABELS } from '../lib/exercises';
+  import { todayReadiness } from '../lib/checkinStore';
+  import type { Readiness } from '../lib/readiness';
   import { app } from '../lib/state.svelte';
   import { estimateMinutes, FEEDBACK_LABELS, muscleVolume, stepLabel, weeklyTarget } from '../lib/strength';
   import {
@@ -19,8 +21,10 @@
   let changes = $state<ChangeLogEntry[]>([]);
   let rirOffset = $state(0);
   let starting = $state(false);
+  let ready = $state<Readiness | null>(null);
 
   async function refresh() {
+    ready = await todayReadiness(profile);
     states = await ensureStates(profile);
     rirOffset = await getRirOffset(profile.id);
     volume = muscleVolume(await recentSessions(profile.id, 7), rirOffset, new Date(Date.now() - 7 * 86400000));
@@ -35,6 +39,8 @@
   }
 
   async function start() {
+    if (ready?.caps.hardStop) return;
+    if (ready?.caps.noTraining && !confirm('Laut Check-in bist du heute krank. Wirklich trainieren? Empfohlen ist Pause.')) return;
     starting = true;
     app.session = await startSession(profile, minutes);
     starting = false;
@@ -69,6 +75,19 @@
 <main>
   <h1>Kraft</h1>
 
+  {#if !ready}
+    <div class="card"><p class="small">Tipp: Mach zuerst den Morgen-Check auf „Heute“ – dann passt die Einheit zu deiner Tagesform.</p></div>
+  {:else if ready.caps.hardStop || ready.caps.noTraining}
+    <div class="card danger"><p class="small">{ready.reasons[0]}</p></div>
+  {:else if ready.light !== 'green' || ready.caps.painRegions.length || ready.caps.noIntensity}
+    <div class="card warn">
+      <p class="small"><b>Heute angepasst:</b>
+        {ready.light === 'red' ? 'kurze, leichte Einheit (max. 2 Sätze, 3 Wdh. Reserve).' : ready.caps.minRir >= 2 ? 'alle Sätze mit mindestens 2 Wdh. Reserve, kein Kalibrierungssatz.' : ''}
+        {ready.caps.painRegions.length ? 'Übungen für schmerzende Regionen sind heute weggelassen.' : ''}
+        Diese Einheit verändert deine Stufen nicht.</p>
+    </div>
+  {/if}
+
   <div class="card">
     <h3>Neue Einheit</h3>
     <p class="small muted">Wie viel Zeit hast du?</p>
@@ -88,7 +107,7 @@
       </ul>
       <p class="small muted">≈ {estimateMinutes(preview)} min inkl. Aufwärmen</p>
     {/if}
-    <button class="primary block" onclick={start} disabled={starting || !preview.length}>Training starten</button>
+    <button class="primary block" onclick={start} disabled={starting || !preview.length || ready?.caps.hardStop}>{ready?.caps.noTraining && !ready.caps.hardStop ? 'Trotzdem starten' : 'Training starten'}</button>
   </div>
 
   <h2>Einstufung</h2>

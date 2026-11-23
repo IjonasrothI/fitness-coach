@@ -171,10 +171,50 @@ describe('Training-Service (DB)', async () => {
     await saveProfile(p, d);
     await ensureStates(p, d);
     const b = await createBackup(d);
-    expect(b.version).toBe(3);
+    expect(b.version).toBe(4);
     expect(b.patternStates?.length).toBe(12);
     const e = new CoachDB('t-bk2r-' + Math.random());
     await restoreBackup(parseBackup(JSON.stringify(b)), e);
     expect(await e.patternStates.count()).toBe(12);
+  });
+});
+
+describe('Tagesform in der Kraftplanung (M4)', async () => {
+  const { planSession, startSession, finishSession } = await import('./training');
+  const { saveCheckIn } = await import('./checkinStore');
+  const { todayKey } = await import('./readiness');
+  const base = (pid: string, o: Record<string, unknown> = {}) => ({
+    id: `${pid}:${todayKey()}`, profileId: pid, date: todayKey(), at: new Date().toISOString(), sleepH: 7.5, sleepQ: 3,
+    energy: 3, soreness: 3, sorenessRegions: [], stress: 3, motivation: 3, pain: [], sick: false, warning: [], ...o
+  });
+
+  it('gelb → Mindest-Reserve 2, keine Kalibrierung', async () => {
+    const d = new CoachDB('t-ready-' + Math.random());
+    const p = profile();
+    await saveProfile(p, d);
+    await saveCheckIn(base(p.id, { energy: 2, soreness: 4, stress: 4, motivation: 2, sleepQ: 2 }) as never, d);
+    const plan = await planSession(p, 45, d);
+    expect(plan.every((x) => x.minRir === 2)).toBe(true);
+    expect(plan.some((x) => x.calibrationLastSet)).toBe(false);
+  });
+
+  it('Knieschmerz > 5 → keine Kniebeugen heute', async () => {
+    const d = new CoachDB('t-pain-' + Math.random());
+    const p = profile();
+    await saveProfile(p, d);
+    await saveCheckIn(base(p.id, { pain: [{ region: 'knee', score: 7 }] }) as never, d);
+    const plan = await planSession(p, 60, d);
+    expect(plan.some((x) => x.pattern === 'squat')).toBe(false);
+  });
+
+  it('gedeckelte Einheit löst keinen Stufenwechsel aus', async () => {
+    const d = new CoachDB('t-cap-' + Math.random());
+    const p = profile();
+    await saveProfile(p, d);
+    await saveCheckIn(base(p.id, { energy: 2, soreness: 4, stress: 4, motivation: 2, sleepQ: 2 }) as never, d);
+    const s = await startSession(p, 30, d);
+    const x = s.plan[0]!;
+    for (let i = 0; i < x.sets; i++) s.sets.push({ pattern: x.pattern, exerciseId: x.exerciseId, bandLevel: x.bandLevel, reps: 40, rir: 4, at: new Date().toISOString() });
+    expect(await finishSession(p, s, { sRpe: 4, enjoyment: 3, pain: [] }, d)).toHaveLength(0);
   });
 });

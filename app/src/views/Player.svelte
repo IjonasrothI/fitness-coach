@@ -49,7 +49,7 @@
   let isLastSet = $derived(done === cur.sets - 1);
   let isCal = $derived(isLastSet && cur.calibrationLastSet);
   let win = $derived(cur.repWindow);
-  let rirTarget = $derived(isLastSet && ex.safeToFailure ? '0–1' : '1–2');
+  let rirTarget = $derived(cur.minRir ? `${cur.minRir}–${cur.minRir + 1}` : isLastSet && ex.safeToFailure ? '0–1' : '1–2');
   let totalSets = $derived(s.plan.reduce((t, x) => t + x.sets, 0));
 
   onMount(() => {
@@ -210,6 +210,7 @@
       <div><span class="stat">{win[0]}–{win[1]}</span> <span class="muted">Wdh.{ex.unilateral ? ' pro Seite' : ''}</span></div>
       <div class="small">Ziel: noch <b>{rirTarget}</b> Wdh. im Tank (Reserve)</div>
       {#if cur.technique}<div class="small tech">{TECHNIQUE_LABELS[cur.technique]}</div>{/if}
+      {#if cur.minRir}<div class="small tech">Tagesform: heute bewusst mehr Reserve lassen</div>{/if}
     </div>
 
     <details bind:open={showCues}>

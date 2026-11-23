@@ -8,6 +8,8 @@
   } from '../lib/endurance';
   import { deleteEndurance, listEndurance, listTests } from '../lib/enduranceStore';
   import { recentSessions } from '../lib/training';
+  import { todayReadiness } from '../lib/checkinStore';
+  import type { Readiness } from '../lib/readiness';
   import type { EnduranceSession, EnduranceTest, Profile, Sport, StrengthSession, TestKind } from '../lib/types';
   import EnduranceLog from './EnduranceLog.svelte';
   import TestForm from './TestForm.svelte';
@@ -17,6 +19,7 @@
   let sessions = $state<EnduranceSession[]>([]);
   let tests = $state<EnduranceTest[]>([]);
   let strength = $state<StrengthSession[]>([]);
+  let ready = $state<Readiness | null>(null);
   let mode = $state<'main' | 'log' | 'test'>('main');
   let testKind = $state<TestKind>('cs');
   let prefill = $state<{ sport: Sport; type: Suggestion['type']; minutes: number } | undefined>(undefined);
@@ -34,10 +37,11 @@
     sessions = await listEndurance(profile.id);
     tests = await listTests(profile.id);
     strength = await recentSessions(profile.id, 14);
+    ready = await todayReadiness(profile);
   }
   onMount(refresh);
 
-  let sug = $derived(suggest(profile, sport, minutes, sessions, strength, tests));
+  let sug = $derived(suggest(profile, sport, minutes, sessions, strength, tests, new Date(), ready?.caps));
   let lr = $derived(longestRun(sessions, profile));
   let cs = $derived.by(() => { const t = latestTest(tests, 'cs'); return t ? criticalSpeed(t) : null; });
   let ftp = $derived(currentFtp(tests));
@@ -136,7 +140,7 @@
       <p class="small target">{sug.target}</p>
       {#each sug.why as w (w)}<p class="small muted">{w}</p>{/each}
     </div>
-    <button class="primary block" onclick={() => openLog(true)}>Erledigt – eintragen</button>
+    {#if sug.minutes > 0}<button class="primary block" onclick={() => openLog(true)}>Erledigt – eintragen</button>{/if}
   </div>
   <button class="block" onclick={() => openLog(false)}>Andere Einheit eintragen</button>
 

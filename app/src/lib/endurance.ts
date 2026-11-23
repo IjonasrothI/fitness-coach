@@ -1,6 +1,7 @@
 // Ausdauer-Engine (Laufen, Rennrad draußen, Rolle). Reine Funktionen – testbar.
 // Regel-IDs verweisen auf reports/Evidenzbasis Fitness Coach App.md
 import { intenseAllowed, maxHr } from './derive';
+import { LEG_REGIONS, type Caps } from './readiness';
 import type {
   EnduranceSession, EnduranceTest, EnduranceType, Profile, Sport, StrengthSession, TestKind
 } from './types';
@@ -316,9 +317,30 @@ const LEG_PATTERNS = ['squat', 'hinge', 'hamstring'];
 
 export function suggest(
   p: Profile, sport: Sport, minutes: number, sessions: EnduranceSession[], strength: StrengthSession[],
-  tests: EnduranceTest[], now = new Date()
+  tests: EnduranceTest[], now = new Date(), caps?: Caps
 ): Suggestion {
   const why: string[] = [];
+  if (caps?.noTraining) {
+    return {
+      sport, type: 'recovery', minutes: 0, title: 'Ruhetag',
+      structure: ['Heute keine Trainingseinheit.', 'Leichtes Gehen ist in Ordnung, wenn du dich danach fühlst.'],
+      target: '', why: ['Laut Check-in heute kein Training (Krankheit oder Warnzeichen).']
+    };
+  }
+  if (caps?.recoveryOnly) {
+    const sp: Sport = sport === 'run' ? 'bikeOutdoor' : sport;
+    const m = Math.min(minutes, 30);
+    return {
+      sport: sp, type: 'recovery', minutes: m, title: 'Lockere Erholung',
+      structure: [`${m} min sehr locker – lieber zu leicht als zu schwer`, 'Alternativ: Spaziergang oder Mobilität'],
+      target: targetText(zones(p, tests, sp), 'easy', sp),
+      why: ['Tagesform rot: heute nur Erholung (F4).']
+    };
+  }
+  if (caps?.painRegions.some((r) => LEG_REGIONS.includes(r)) && sport === 'run') {
+    why.push('Heute Schmerz über 5/10 im Bein – Radfahren entlastet (E25).');
+    return easy('bikeOutdoor', minutes, targetText(zones(p, tests, 'bikeOutdoor'), 'easy', 'bikeOutdoor'), why);
+  }
   const week = within(sessions, 7, now);
   const z = zones(p, tests, sport);
   const target = (t: 'easy' | 'tempo' | 'intervals') => targetText(z, t, sport);
@@ -332,7 +354,11 @@ export function suggest(
   }
 
   let allowHard = true;
-  if (!intenseAllowed(p)) {
+  if (caps?.noIntensity) {
+    allowHard = false;
+    why.push('Tagesform: heute keine harten Einheiten (Schlaf, Ruhepuls oder Befinden).');
+  }
+  if (allowHard && !intenseAllowed(p)) {
     allowHard = false;
     why.push('Intensive Einheiten sind bis zur ärztlichen Freigabe gesperrt (Gesundheitscheck).');
   }

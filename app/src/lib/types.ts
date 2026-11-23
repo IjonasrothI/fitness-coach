@@ -209,6 +209,8 @@ export interface PlannedExercise {
   restSec: number;
   calibrationLastSet: boolean;
   technique?: Technique;
+  /** Tagesform-Deckel (M4): mindestens so viele Wdh. in Reserve */
+  minRir?: number;
 }
 
 export interface PainEntry {
@@ -286,4 +288,34 @@ export interface EnduranceTest {
   hr?: number;
   /** ftp20/talkBike: Watt */
   power?: number;
+}
+
+// ---------- Täglicher Check-in (M4) ----------
+
+export type WarningSymptom = 'chestPain' | 'breathless' | 'palpitations' | 'fainting';
+
+export interface CheckIn {
+  id: string; // `${profileId}:${date}`
+  profileId: string;
+  date: string; // YYYY-MM-DD
+  at: string;
+  sleepH: number;
+  /** 1–5, 5 = sehr gut */
+  sleepQ: number;
+  energy: number;
+  /** 1–5, 5 = sehr starker Muskelkater */
+  soreness: number;
+  sorenessRegions: BodyRegion[];
+  /** 1–5, 5 = sehr gestresst */
+  stress: number;
+  motivation: number;
+  pain: PainEntry[];
+  sick: boolean;
+  warning: WarningSymptom[];
+  restingHr?: number;
+  period?: boolean;
+  /** 0–3 */
+  cycleSymptoms?: number;
+  /** Nutzer übersteuert Gelb/Rot (F21) */
+  override?: boolean;
 }

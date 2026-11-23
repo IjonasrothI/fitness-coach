@@ -1,5 +1,7 @@
 // Verbindet die Kraft-Engine mit der lokalen Datenbank.
+import { todayReadiness, withPainRegions } from './checkinStore';
 import { db, getMeta, plain, setMeta, type CoachDB } from './db';
+import type { Readiness } from './readiness';
 import { PATTERNS } from './exercises';
 import {
   buildSession, calibrationDue, initialState, progress, swapAfterFeedback, updateRirOffset, type Change
@@ -39,12 +41,28 @@ export async function recentSessions(pid: string, days: number, d: CoachDB = db)
     .filter((s) => s.status === 'done' && s.startedAt >= since).toArray();
 }
 
-export async function planSession(p: Profile, minutes: number, d: CoachDB = db) {
+/**
+ * Plant eine Krafteinheit unter Berücksichtigung der heutigen Tagesform (F4, F5, F12):
+ * Schmerzregionen werden ausgeschlossen, Gelb/Rot erhöht die Mindest-Reserve,
+ * Rot verkürzt auf eine leichte Einheit, keine Kalibrierung/Intensivierung ohne Grün.
+ */
+export async function planSession(p: Profile, minutes: number, d: CoachDB = db, r?: Readiness | null) {
+  const ready = r === undefined ? await todayReadiness(p, d) : r;
+  const eff = withPainRegions(p, ready);
   const states = await ensureStates(p, d);
   const recent = await recentSessions(p.id, 7, d);
   const rirOffset = await getRirOffset(p.id, d);
-  const calibrate = calibrationDue(await getLastCalibration(p.id, d));
-  return buildSession(p, states, recent, minutes, { rirOffset, calibrate });
+  const caps = ready?.caps;
+  const calibrate = calibrationDue(await getLastCalibration(p.id, d)) && !caps?.noIntensity;
+  const mins = caps?.recoveryOnly ? Math.min(minutes, 20) : minutes;
+  const plan = buildSession(eff, states, recent, mins, { rirOffset, calibrate });
+  if (!caps) return plan;
+  return plan.map((x) => ({
+    ...x,
+    sets: caps.recoveryOnly ? Math.min(x.sets, 2) : x.sets,
+    minRir: caps.minRir > 1 ? caps.minRir : undefined,
+    technique: caps.noIntensity ? undefined : x.technique
+  }));
 }
 
 export async function startSession(p: Profile, minutes: number, d: CoachDB = db): Promise<StrengthSession> {
@@ -93,6 +111,9 @@ export async function finishSession(
   for (const st of states) {
     const sets = s.sets.filter((x) => x.pattern === st.pattern);
     if (!sets.length) continue;
+    // Einheiten mit Tagesform-Deckel (bewusst mehr Reserve) nicht für Stufenwechsel werten
+    const capped = s.plan.find((x) => x.pattern === st.pattern)?.minRir;
+    if (capped && capped >= 2) continue;
     const r = progress(st, sets, p, offset, date.slice(0, 10));
     await d.patternStates.put(plain(r.state));
     if (r.change) changes.push(r.change);

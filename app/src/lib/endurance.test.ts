@@ -184,3 +184,17 @@ describe('Vorschlag', () => {
     expect(s.sport).toBe('bikeOutdoor');
   });
 });
+
+describe('Tagesform im Ausdauer-Vorschlag (M4)', () => {
+  const p = profile();
+  const caps = (o: Partial<import('./readiness').Caps>) => ({ noTraining: false, hardStop: false, noIntensity: false, recoveryOnly: false, painRegions: [], minRir: 1, ...o });
+  it('krank → Ruhetag', () => expect(suggest(p, 'run', 45, [], [], [], NOW, caps({ noTraining: true })).title).toBe('Ruhetag'));
+  it('rot → lockere Erholung ≤ 30 min, nicht laufen', () => {
+    const s = suggest(p, 'run', 60, [], [], [], NOW, caps({ recoveryOnly: true }));
+    expect(s.type).toBe('recovery');
+    expect(s.minutes).toBe(30);
+    expect(s.sport).toBe('bikeOutdoor');
+  });
+  it('keine Intensität → keine Intervalle', () => expect(suggest(p, 'run', 45, [], [], [csTest], NOW, caps({ noIntensity: true })).type).not.toBe('intervals'));
+  it('Knieschmerz → Rad statt Laufen', () => expect(suggest(p, 'run', 45, [], [], [], NOW, caps({ painRegions: ['knee'] })).sport).toBe('bikeOutdoor'));
+});

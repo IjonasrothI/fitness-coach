@@ -59,7 +59,12 @@
     <p class="small">Einheit passend zu deiner Zeit – die App wählt die Übungen nach deinem Wochenvolumen.</p>
     <button class="primary block" onclick={() => (app.view = 'strength')}>Zum Krafttraining</button>
   </div>
-  <p class="small muted">Laufen/Rad mit Feldtests und der tägliche Check-in folgen in den nächsten Meilensteinen.</p>
+  <div class="card">
+    <h3>Laufen & Rad</h3>
+    <p class="small">Vorschlag für heute, Zonen aus deinen Feldtests und Schutz vor zu großen Sprüngen beim langen Lauf.</p>
+    <button class="block" onclick={() => (app.view = 'endurance')}>Zur Ausdauer</button>
+  </div>
+  <p class="small muted">Der tägliche Check-in und die automatische Wochenplanung folgen in den nächsten Meilensteinen.</p>
 
   <h2>Dein Ausgangspunkt</h2>
   <div class="grid2">

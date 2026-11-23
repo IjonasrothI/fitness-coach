@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type {
-  ChangeLogEntry, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
+  ChangeLogEntry, EnduranceSession, EnduranceTest, ExerciseFeedback, Meta, PatternState, Profile,
+  StrengthSession, WeightEntry
 } from './types';
 
 export class CoachDB extends Dexie {
@@ -11,6 +12,8 @@ export class CoachDB extends Dexie {
   patternStates!: EntityTable<PatternState, 'id'>;
   sessions!: EntityTable<StrengthSession, 'id'>;
   feedback!: EntityTable<ExerciseFeedback, 'id'>;
+  endurance!: EntityTable<EnduranceSession, 'id'>;
+  tests!: EntityTable<EnduranceTest, 'id'>;
 
   constructor(name = 'fitness-coach') {
     super(name);
@@ -24,6 +27,10 @@ export class CoachDB extends Dexie {
       patternStates: 'id, profileId',
       sessions: 'id, profileId, status, startedAt',
       feedback: '++id, profileId'
+    });
+    this.version(3).stores({
+      endurance: 'id, profileId, date',
+      tests: 'id, profileId, kind, date'
     });
   }
 }
@@ -55,7 +62,7 @@ export async function saveProfile(p: Profile, d: CoachDB = db): Promise<void> {
 }
 
 export async function deleteProfile(id: string, d: CoachDB = db): Promise<void> {
-  const tables = [d.profiles, d.weights, d.changes, d.patternStates, d.sessions, d.feedback];
+  const tables = [d.profiles, d.weights, d.changes, d.patternStates, d.sessions, d.feedback, d.endurance, d.tests];
   await d.transaction('rw', tables, async () => {
     await d.profiles.delete(id);
     for (const t of tables.slice(1)) await t.where('profileId').equals(id).delete();

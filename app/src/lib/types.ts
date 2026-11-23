@@ -243,3 +243,47 @@ export interface ExerciseFeedback {
   note: string;
   at: string;
 }
+
+// ---------- Ausdauer (M3) ----------
+
+export type Sport = 'run' | 'bikeOutdoor' | 'bikeIndoor';
+export type EnduranceType = 'easy' | 'long' | 'tempo' | 'intervals' | 'test' | 'recovery';
+
+export interface EnduranceSession {
+  id: string;
+  profileId: string;
+  date: string; // ISO
+  sport: Sport;
+  type: EnduranceType;
+  durationMin: number;
+  distanceKm?: number;
+  avgHr?: number;
+  maxHr?: number;
+  /** Rolle: Ø-Leistung der ganzen Einheit */
+  avgPower?: number;
+  /** Intervalle: Ø der Arbeitsintervalle (Lauf: s/km, Rolle: Watt) */
+  intervalPaceSec?: number;
+  intervalPower?: number;
+  /** Ø-Puls der zweiten Hälfte (Drift) */
+  hrSecondHalf?: number;
+  elevationM?: number;
+  sRpe: number;
+  pain?: PainEntry[];
+  note?: string;
+}
+
+export type TestKind = 'cs' | 'talkRun' | 'ftp20' | 'talkBike';
+
+export interface EnduranceTest {
+  id: string;
+  profileId: string;
+  date: string;
+  kind: TestKind;
+  /** cs: Dauer/Distanz zweier Maximalläufe */
+  t1Sec?: number; d1M?: number; t2Sec?: number; d2M?: number;
+  /** talkRun: Pace an der Sprechgrenze (s/km) + Puls */
+  paceSec?: number;
+  hr?: number;
+  /** ftp20/talkBike: Watt */
+  power?: number;
+}

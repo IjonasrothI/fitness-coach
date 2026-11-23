@@ -2,11 +2,11 @@
 // wenn der Nutzer die Datei selbst speichert.
 import { db, getMeta, setMeta, type CoachDB } from './db';
 import type {
-  ChangeLogEntry, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
+  ChangeLogEntry, EnduranceSession, EnduranceTest, ExerciseFeedback, Meta, PatternState, Profile, StrengthSession, WeightEntry
 } from './types';
 
 export const BACKUP_FORMAT = 'fitness-coach-backup';
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 export const BACKUP_REMINDER_DAYS = 14;
 
 export interface Backup {
@@ -22,6 +22,9 @@ export interface Backup {
   sessions?: StrengthSession[];
   feedback?: ExerciseFeedback[];
   meta?: Meta[];
+  // ab Version 3
+  endurance?: EnduranceSession[];
+  tests?: EnduranceTest[];
 }
 
 export async function createBackup(d: CoachDB = db): Promise<Backup> {
@@ -36,6 +39,8 @@ export async function createBackup(d: CoachDB = db): Promise<Backup> {
     patternStates: await d.patternStates.toArray(),
     sessions: await d.sessions.toArray(),
     feedback: await d.feedback.toArray(),
+    endurance: await d.endurance.toArray(),
+    tests: await d.tests.toArray(),
     meta: (await d.meta.toArray()).filter((m) => m.key !== 'lastBackupAt')
   };
 }
@@ -68,7 +73,7 @@ export function parseBackup(text: string): Backup {
 
 /** Ersetzt alle Daten auf dem Gerät durch die Sicherung. */
 export async function restoreBackup(b: Backup, d: CoachDB = db): Promise<void> {
-  const tables = [d.profiles, d.weights, d.changes, d.meta, d.patternStates, d.sessions, d.feedback];
+  const tables = [d.profiles, d.weights, d.changes, d.meta, d.patternStates, d.sessions, d.feedback, d.endurance, d.tests];
   await d.transaction('rw', tables, async () => {
     const lastBackup = await d.meta.get('lastBackupAt');
     for (const t of tables) await t.clear();
@@ -79,6 +84,8 @@ export async function restoreBackup(b: Backup, d: CoachDB = db): Promise<void> {
     await d.patternStates.bulkPut(b.patternStates ?? []);
     await d.sessions.bulkPut(b.sessions ?? []);
     await d.feedback.bulkPut(b.feedback ?? []);
+    await d.endurance.bulkPut(b.endurance ?? []);
+    await d.tests.bulkPut(b.tests ?? []);
     await d.meta.bulkPut((b.meta ?? []).filter((m) => m.key !== 'lastBackupAt'));
     const active = b.activeProfileId && b.profiles.some((p) => p.id === b.activeProfileId)
       ? b.activeProfileId

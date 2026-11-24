@@ -43,7 +43,8 @@ class AppState {
   async save(p: Profile) {
     const before = this.profiles.find((x) => x.id === p.id);
     await saveProfile(p);
-    if (before && (JSON.stringify(before.availability) !== JSON.stringify(p.availability) || before.goals.focus !== p.goals.focus)) {
+    const changed = (x: Profile) => JSON.stringify([x.availability, x.goals.focus, x.goals.sessionsPerWeek, x.goals.strengthPerWeek, x.goals.enduranceSport, x.endurance.runOutdoor, x.endurance.bikeOutdoor, x.endurance.bikeIndoor]);
+    if (before && changed(before) !== changed(p)) {
       const { applyProfileAvailability } = await import('./weekStore');
       await applyProfileAvailability(p);
     }

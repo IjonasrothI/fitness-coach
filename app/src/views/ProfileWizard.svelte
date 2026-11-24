@@ -7,6 +7,7 @@
   import { clearance, fmt, maxHr, validateProfile, weeklyMinutes } from '../lib/derive';
   import { app } from '../lib/state.svelte';
   import { MOTIVATION_INFO, MOTIVATION_LABELS } from '../lib/formats';
+  import { strengthTarget } from '../lib/planner';
   import type { AnchorKey, BodyRegion, GoalArea, Level, Motivation, Profile, Weekday } from '../lib/types';
 
   interface Props { initial: Profile; mode: 'new' | 'edit'; startStep?: number }
@@ -20,6 +21,15 @@
   let step = $state(startStep);
   let errors = $state<string[]>([]);
   const motivationOptions = (Object.keys(MOTIVATION_LABELS) as Motivation[]).map((m) => ({ value: m, label: MOTIVATION_LABELS[m] }));
+  let strengthOptions = $derived([{ value: -1, label: 'Auto' }, ...Array.from({ length: Math.min(4, p.goals.sessionsPerWeek) + 1 }, (_, i) => ({ value: i, label: String(i) }))]);
+  const sportOptions: { value: 'auto' | 'run' | 'mixed' | 'bike'; label: string }[] = [
+    { value: 'auto', label: 'Auto' }, { value: 'run', label: 'Laufen' }, { value: 'mixed', label: 'Gemischt' }, { value: 'bike', label: 'Rad' }
+  ];
+  let split = $derived.by(() => {
+    const n = p.goals.sessionsPerWeek;
+    const s = Math.min(n, p.goals.strengthPerWeek ?? strengthTarget(p, Math.min(n, p.availability.days.length || n)));
+    return { s, e: n - s };
+  });
   let saving = $state(false);
 
   const STEPS = ['Über dich', 'Gesundheit', 'Ziele', 'Erfahrung', 'Zeit', 'Equipment', 'Ausdauer', 'Überblick'];
@@ -197,10 +207,18 @@
     <label class="field"><span>Konkretes Ziel (optional)</span>
       <input type="text" bind:value={p.goals.specificGoal} placeholder="z. B. 10 km unter 50 min, 20 saubere Liegestütze" />
     </label>
-    <label class="field"><span>Einheiten pro Woche als Ziel: <b>{p.goals.sessionsPerWeek}</b></span>
+    <label class="field"><span>Einheiten pro Woche: <b>{p.goals.sessionsPerWeek}</b></span>
       <input type="range" min="1" max="10" bind:value={p.goals.sessionsPerWeek} />
     </label>
-    <p class="muted small">Das ist dein Prozessziel. Die App feiert Regelmäßigkeit, nicht Perfektion – eine ausgelassene Einheit pro Woche bricht keine Serie.</p>
+    <p class="muted small">So viele Einheiten plant die App ein – auch wenn du mehr Tage freigibst. Die übrigen Tage bleiben Puffer. Eine ausgelassene Einheit pro Woche bricht keine Serie.</p>
+    <div class="field"><span class="lbl">Davon Krafttraining</span>
+      <Choice options={strengthOptions} bind:value={() => p.goals.strengthPerWeek ?? -1, (v) => (p.goals.strengthPerWeek = v < 0 ? undefined : v)} columns={strengthOptions.length} />
+      <span class="small muted">→ {split.s}× Kraft, {split.e}× Ausdauer{p.goals.strengthPerWeek === undefined ? ' (automatisch nach deinem Schwerpunkt)' : ''}</span>
+    </div>
+    <div class="field"><span class="lbl">Ausdauer vor allem als</span>
+      <Choice options={sportOptions} bind:value={() => p.goals.enduranceSport ?? 'auto', (v) => (p.goals.enduranceSport = v === 'auto' ? undefined : v)} columns={2} />
+      <span class="small muted">Gilt, wenn du Laufen und Rad beide aktiviert hast (Abschnitt Ausdauer).</span>
+    </div>
     <div class="field"><span class="lbl">Was motiviert dich beim Krafttraining?</span>
       <Choice options={motivationOptions} bind:value={p.motivation} columns={1} />
       {#if p.motivation}<span class="small muted">{MOTIVATION_INFO[p.motivation]}</span>{/if}

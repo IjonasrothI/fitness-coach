@@ -36,8 +36,12 @@ export interface Goals {
   focus: number;
   areas: GoalArea[];
   specificGoal: string;
-  /** Prozessziel (F23) */
+  /** Prozessziel (F23) – so viele Einheiten plant die App pro Woche, auch wenn mehr Tage frei sind */
   sessionsPerWeek: number;
+  /** Davon Kraft; fehlt = automatisch nach Schwerpunkt */
+  strengthPerWeek?: number;
+  /** Ausdauer vor allem als …; fehlt = automatisch nach Zielen */
+  enduranceSport?: 'run' | 'mixed' | 'bike';
 }
 
 export type Level = 'none' | 'some' | 'regular' | 'advanced';

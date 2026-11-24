@@ -40,7 +40,7 @@ describe('Verteilung', () => {
 });
 
 describe('planWeek', () => {
-  const p = profile((x) => { x.goals.focus = 50; x.goals.areas = ['running', 'health']; });
+  const p = profile((x) => { x.goals.focus = 50; x.goals.areas = ['running', 'health']; x.goals.sessionsPerWeek = 7; });
   const avail = [45, 0, 45, 45, 0, 90, 40]; // Mo Mi Do Sa So
 
   it('alle verfügbaren Tage belegt, Kraft ≥ 2×, lange Einheit am längsten Tag', () => {
@@ -140,5 +140,34 @@ describe('Flexible Einheitsdauer', () => {
     expect(Math.min(...vals)).toBeGreaterThanOrEqual(30);
     expect(varyMinutes(20, '2026-11-23', 1, 'strength')).toBe(20);
     expect(varyMinutes(40, '2026-11-23', 3, 'easy')).toBe(varyMinutes(40, '2026-11-23', 3, 'easy'));
+  });
+});
+
+describe('Wochenziel und Aufteilung', () => {
+  const six = [45, 45, 45, 0, 45, 90, 45];
+  it('4 Einheiten bei 6 möglichen Tagen – Rest bleibt Puffer', () => {
+    const p = profile((x) => { x.goals.sessionsPerWeek = 4; x.goals.areas = ['running']; });
+    const { days, why } = planWeek(p, six, { weekStart: MON, deload: false });
+    expect(days.flatMap((d) => d.items)).toHaveLength(4);
+    expect(why.join(' ')).toContain('Puffer');
+    // lange Einheit trotzdem am langen Samstag
+    expect(days[5]!.items[0]?.type).toBe('long');
+  });
+  it('Kraft-Anzahl selbst festlegen', () => {
+    const p = profile((x) => { x.goals.sessionsPerWeek = 4; x.goals.strengthPerWeek = 1; });
+    const items = planWeek(p, six, { weekStart: MON, deload: false }).days.flatMap((d) => d.items);
+    expect(items.filter((x) => x.kind === 'strength')).toHaveLength(1);
+    expect(items.filter((x) => x.kind === 'endurance')).toHaveLength(3);
+    const p3 = profile((x) => { x.goals.sessionsPerWeek = 4; x.goals.strengthPerWeek = 3; });
+    expect(planWeek(p3, six, { weekStart: MON, deload: false }).days.flatMap((d) => d.items).filter((x) => x.kind === 'strength')).toHaveLength(3);
+  });
+  it('Ausdauer: vor allem Rad bzw. Laufen', () => {
+    const base = (pref: 'run' | 'bike') => profile((x) => {
+      x.goals.sessionsPerWeek = 5; x.goals.strengthPerWeek = 2; x.goals.enduranceSport = pref;
+      x.endurance.runOutdoor = true; x.endurance.bikeOutdoor = true; x.endurance.bikeIndoor = true;
+    });
+    const sports = (pref: 'run' | 'bike') => planWeek(base(pref), six, { weekStart: '2026-06-01', deload: false }).days.flatMap((d) => d.items).filter((x) => x.kind === 'endurance').map((x) => x.sport);
+    expect(sports('bike').filter((s) => s === 'run').length).toBeLessThanOrEqual(1);
+    expect(sports('run').filter((s) => s !== 'run').length).toBeLessThanOrEqual(1);
   });
 });

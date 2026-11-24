@@ -129,11 +129,25 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
   const fixedStrength = days.reduce((t, d) => t + d.items.filter((x) => x.kind === 'strength').length, 0);
   const fixedEndurance = days.flatMap((d) => d.items.filter((x) => x.kind === 'endurance'));
   const free = days.map((d, i) => ({ d, i })).filter(({ d }) => d.date >= from && d.items.length === 0 && d.availableMin >= 15);
-  const freeIdx = free.map((x) => x.i);
   const sports = enabledSports(p);
 
-  const totalDays = days.filter((d) => d.availableMin >= 15).length;
-  let sTarget = Math.max(0, strengthTarget(p, totalDays) - fixedStrength);
+  // Nur so viele Einheiten wie gewünscht (Prozessziel); die übrigen freien Tage bleiben Puffer.
+  const wanted = Math.max(1, p.goals.sessionsPerWeek || 4);
+  const fixedCount = days.reduce((t, d) => t + d.items.length, 0);
+  const allFree = free.map((x) => x.i);
+  const slots = Math.max(0, Math.min(allFree.length, wanted - fixedCount));
+  const freeIdx = slots < allFree.length
+    ? spreadDays(allFree, slots, (picked) => picked.reduce((t, i) => t + days[i]!.availableMin, 0) / 100)
+    : allFree;
+  const spare = allFree.filter((i) => !freeIdx.includes(i));
+  if (spare.length) {
+    const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    why.push(`${wanted} Einheiten (dein Wochenziel) auf ${allFree.length + days.filter((d) => d.items.length).length} mögliche Tage verteilt – ${spare.map((i) => WD[i]).join(', ')} bleiben frei als Puffer, falls etwas ausfällt.`);
+  }
+
+  const totalDays = freeIdx.length + days.filter((d) => d.items.length).length;
+  const manual = p.goals.strengthPerWeek;
+  let sTarget = Math.max(0, (manual ?? strengthTarget(p, totalDays)) - fixedStrength);
   if (sports.length === 0) sTarget = Math.min(freeIdx.length, Math.max(sTarget, 3));
   sTarget = Math.min(sTarget, freeIdx.length);
   const eCount = sports.length ? freeIdx.length - sTarget : 0;
@@ -148,7 +162,7 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
     freeIdx.some((i) => !picked.includes(i) && !picked.includes(i - 1) && (longDay === undefined || Math.abs(i - longDay) > 1));
   let sDays = spreadDays(strengthPool, sTarget, (picked) => (hardFree(picked) ? 5 : 0));
   // Zwei Ganzkörper-Krafttage direkt hintereinander vermeiden: lieber eine Einheit weniger (≥ 2 bleiben)
-  if (sDays.length > 2 && minGap(sDays) < 2) {
+  if (manual === undefined && sDays.length > 2 && minGap(sDays) < 2) {
     sTarget--;
     sDays = spreadDays(strengthPool, sTarget, (picked) => (hardFree(picked) ? 5 : 0));
     why.push('Eine Krafteinheit weniger, damit zwischen zwei Ganzkörpereinheiten mindestens ein Tag Pause liegt.');
@@ -165,7 +179,7 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
 
   // ---- Ausdauer ----
   const eDays = sports.length ? freeIdx.filter((i) => !sDays.includes(i)) : [];
-  why.unshift(`${totalDays} Tage mit Zeit: ${sDays.length + fixedStrength}× Kraft (jeder Muskel mind. 2× pro Woche, K4) und ${eDays.length + fixedEndurance.length}× Ausdauer.`);
+  why.unshift(`${sDays.length + fixedStrength}× Kraft ${manual !== undefined ? '(von dir festgelegt)' : '(jeder Muskel mind. 2× pro Woche, K4)'} und ${eDays.length + fixedEndurance.length}× Ausdauer.`);
   if (sports.length && eDays.length) {
     const types = enduranceTypes(eDays.length, o.deload);
     // lange Einheit auf den längsten Ausdauertag
@@ -201,15 +215,18 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
   // ---- Doppeleinheiten, falls WHO-Minuten fehlen (E20) ----
   if (p.availability.allowDoubleSessions && sports.length) {
     const endMin = days.flatMap((d) => d.items).filter((x) => x.kind === 'endurance').reduce((t, x) => t + x.minutes, 0);
-    if (endMin < 150) {
+    let count = days.reduce((t, d) => t + d.items.length, 0);
+    const before = count;
+    if (endMin < 150 && count < wanted) {
       for (const i of sDays) {
         const d = days[i]!;
-        if (d.availableMin >= 75) {
+        if (d.availableMin >= 75 && count < wanted) {
+          count++;
           d.items[0]!.minutes = Math.min(d.items[0]!.minutes, 45);
           d.items.push({ id: nid(), kind: 'endurance', sport: pickSport(p, d.date, 'easy', i), type: 'easy', minutes: clampMin(d.availableMin - 45, 20, 45) });
         }
       }
-      why.push('Doppeleinheiten an langen Krafttagen, um auf 150 Ausdauerminuten zu kommen (WHO).');
+      if (count > before) why.push('Doppeleinheiten an langen Krafttagen, um auf 150 Ausdauerminuten zu kommen (WHO).');
     }
   }
 
@@ -281,6 +298,11 @@ function pickSport(p: Profile, date: string, type: EnduranceType, i: number): Sp
   const wantsBike = p.goals.areas.includes('cycling');
   if (!run && bike) return bike;
   if (!bike) return 'run';
+  // vom Nutzer gewählte Verteilung
+  const pref = p.goals.enduranceSport;
+  if (pref === 'run') return type === 'easy' && i % 4 === 3 ? bike : 'run';
+  if (pref === 'bike') return type === 'easy' && i % 4 === 3 ? 'run' : bike;
+  if (pref === 'mixed') return type === 'long' ? (wantsBike && !wantsRun ? bike : 'run') : i % 2 ? bike : 'run';
   // Intervalle im Winter auf der Rolle mit Watt sind präzise steuerbar
   if (type === 'intervals' && bike === 'bikeIndoor' && p.endurance.bikeIndoorPower && !wantsRun) return 'bikeIndoor';
   if (wantsRun && !wantsBike) return type === 'easy' && i % 3 === 2 ? bike : 'run';

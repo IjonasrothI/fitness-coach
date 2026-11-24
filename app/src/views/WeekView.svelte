@@ -115,6 +115,7 @@
     <div class="card" class:warn={week.deload}>
       <p class="small"><b>{week.deload ? 'Entlastungswoche' : `Blockwoche ${week.blockWeek}`}</b> · Kraft {totals.strength} min · Ausdauer {totals.endurance} min · erledigt {doneMin} min</p>
       {#each week.why as w (w)}<p class="small muted">{w}</p>{/each}
+      <button class="ghost" onclick={() => (app.editing = { profile, mode: 'edit', step: 2 })}>Anzahl und Aufteilung ändern</button>
     </div>
 
     {#each week.days as day, i (day.date)}
@@ -137,7 +138,7 @@
             <span class="small">{it.minutes} min {STATUS_LABEL[st] ? `· ${STATUS_LABEL[st]}` : ''}</span>
           </button>
         {/each}
-        {#if !day.items.length && day.availableMin > 0}<p class="small muted">Ruhetag</p>{/if}
+        {#if !day.items.length && day.availableMin > 0}<p class="small muted">Frei – Puffertag, falls etwas ausfällt</p>{/if}
       </div>
     {/each}
 

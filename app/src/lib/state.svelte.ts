@@ -3,7 +3,7 @@ import { backupDue } from './backup';
 import { activeSession } from './training';
 import type { PlannedItem, Profile, StrengthSession } from './types';
 
-export type View = 'home' | 'week' | 'strength' | 'endurance' | 'more';
+export type View = 'home' | 'week' | 'strength' | 'endurance' | 'progress' | 'more';
 
 class AppState {
   loaded = $state(false);

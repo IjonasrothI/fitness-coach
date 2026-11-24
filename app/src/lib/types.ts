@@ -124,7 +124,7 @@ export interface ChangeLogEntry {
   next?: PatternState;
   sessionId?: string;
   /** Art der Änderung für „Rückgängig" (Standard: Übungsstufe) */
-  kind?: 'pattern' | 'availability' | 'deload';
+  kind?: 'pattern' | 'availability' | 'deload' | 'volume' | 'intervalFormat';
   prevData?: unknown;
 }
 

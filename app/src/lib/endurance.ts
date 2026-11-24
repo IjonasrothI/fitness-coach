@@ -20,6 +20,19 @@ export const TEST_LABELS: Record<TestKind, string> = {
 /** Retest-Intervall in Tagen (6–8 Wochen) */
 export const RETEST_DAYS = 49;
 
+/** Intervallformate – Wechsel bei Plateau oder neuem Block (F17, F24, E22). */
+export const INTERVAL_FORMATS: { name: string; long: [string, string]; short: [string, string] }[] = [
+  { name: '4 × 4 min', long: ['4 × 4 min', '3 min locker'], short: ['5 × 3 min', '2 min locker'] },
+  { name: '6 × 3 min', long: ['6 × 3 min', '2 min locker'], short: ['4 × 3 min', '2 min locker'] },
+  { name: '30/15 s', long: ['3 Serien × 13 × (30 s hart / 15 s locker)', '3 min locker zwischen den Serien'], short: ['2 Serien × 13 × (30 s hart / 15 s locker)', '3 min locker zwischen den Serien'] }
+];
+
+export function intervalSet(minutes: number, format = 0): { reps: string; rec: string } {
+  const f = INTERVAL_FORMATS[format % INTERVAL_FORMATS.length]!;
+  const [reps, rec] = minutes >= 45 ? f.long : f.short;
+  return { reps, rec };
+}
+
 // ---------- Formatierung ----------
 
 export function paceStr(secPerKm: number): string {
@@ -317,7 +330,7 @@ const LEG_PATTERNS = ['squat', 'hinge', 'hamstring'];
 
 export function suggest(
   p: Profile, sport: Sport, minutes: number, sessions: EnduranceSession[], strength: StrengthSession[],
-  tests: EnduranceTest[], now = new Date(), caps?: Caps
+  tests: EnduranceTest[], now = new Date(), caps?: Caps, intervalFormat = 0
 ): Suggestion {
   const why: string[] = [];
   if (caps?.noTraining) {
@@ -378,9 +391,7 @@ export function suggest(
   const hardThisWeek = week.filter((s) => s.type === 'intervals' || s.type === 'test').length;
 
   if (allowHard && minutes >= 30 && hardThisWeek === 0 && dist.share[2] < 0.1) {
-    const long = minutes >= 45;
-    const reps = long ? '4 × 4 min' : '5 × 3 min';
-    const rec = long ? '3 min locker' : '2 min locker';
+    const { reps, rec } = intervalSet(minutes, intervalFormat);
     why.push('Diese Woche noch keine hochintensive Einheit. 1 × pro Woche verbessert die VO2max am effektivsten (E22).');
     return {
       sport, type: 'intervals', minutes, title: `Intervalle ${reps}`,
@@ -453,7 +464,7 @@ export function targetText(z: Zones, t: 'easy' | 'tempo' | 'intervals', sport: S
 /** Beschreibt eine im Wochenplan geplante Einheit, angepasst an die Tagesform. */
 export function describePlanned(
   p: Profile, sport: Sport, type: EnduranceType, minutes: number, sessions: EnduranceSession[],
-  tests: EnduranceTest[], caps?: Caps, deload = false, now = new Date()
+  tests: EnduranceTest[], caps?: Caps, deload = false, now = new Date(), intervalFormat = 0
 ): Suggestion {
   const why: string[] = [];
   if (caps?.noTraining || caps?.recoveryOnly || (caps?.painRegions.some((r) => LEG_REGIONS.includes(r)) && sport === 'run')) {
@@ -469,11 +480,10 @@ export function describePlanned(
   const cap = sport === 'run' ? (lr.km > 0 ? Math.round(lr.km * 1.1 * 10) / 10 : 5) : undefined;
   if (deload) why.push('Entlastungswoche: kürzer und locker, dazu 4–6 kurze Steigerungen (je 15–20 s) am Ende (F13).');
   if (t === 'intervals') {
-    const long = minutes >= 45;
-    const reps = long ? '4 × 4 min' : '5 × 3 min';
+    const { reps, rec } = intervalSet(minutes, intervalFormat);
     return {
       sport, type: t, minutes, title: `Intervalle ${reps}`,
-      structure: ['10 min locker einlaufen/-fahren, 2–3 kurze Steigerungen', `${reps} hart, dazwischen ${long ? '3' : '2'} min locker`, 'Rest locker ausklingen'],
+      structure: ['10 min locker einlaufen/-fahren, 2–3 kurze Steigerungen', `${reps} hart, dazwischen ${rec}`, 'Rest locker ausklingen'],
       target: targetText(z, 'intervals', sport), why: [...why, 'Wochen-Schlüsseleinheit für die VO2max (E22).']
     };
   }

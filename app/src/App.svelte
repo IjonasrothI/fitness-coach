@@ -10,6 +10,7 @@
   import StrengthView from './views/StrengthView.svelte';
   import EnduranceView from './views/EnduranceView.svelte';
   import WeekView from './views/WeekView.svelte';
+  import ProgressView from './views/ProgressView.svelte';
   import Player from './views/Player.svelte';
   import Placement from './views/Placement.svelte';
 
@@ -24,6 +25,7 @@
     { id: 'week', label: 'Woche', icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4' },
     { id: 'strength', label: 'Kraft', icon: 'M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12' },
     { id: 'endurance', label: 'Ausdauer', icon: 'M13 4a2 2 0 100-4 2 2 0 000 4zM7 22l3-7 3 3v6M10 15l-2-5 5-2 3 4 4 1M6 12l2-2' },
+    { id: 'progress', label: 'Verlauf', icon: 'M4 19h16M5 16l4-5 4 3 6-8' },
     { id: 'more', label: 'Mehr', icon: 'M4 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0M10.5 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0M17 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0' }
   ];
 </script>
@@ -64,6 +66,8 @@
     <EnduranceView profile={app.active} />
   {:else if app.view === 'week'}
     <WeekView profile={app.active} />
+  {:else if app.view === 'progress'}
+    <ProgressView profile={app.active} />
   {:else}
     <ProfileView profile={app.active} />
     <DataView />
@@ -97,7 +101,7 @@
   }
   .tabbar button {
     flex: 1; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
-    font-size: 12px; font-weight: 500; color: var(--muted); padding: 6px 0; min-height: 52px;
+    font-size: 11px; font-weight: 500; color: var(--muted); padding: 6px 0; min-height: 52px; min-width: 0;
   }
   .tabbar button.on { color: var(--accent); font-weight: 650; }
   .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

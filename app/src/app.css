@@ -12,6 +12,8 @@
   --warn-soft: #fff1d6;
   --danger: #b3261e;
   --danger-soft: #fde4e2;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
   --radius: 14px;
   --gap: 16px;
   color-scheme: light;
@@ -32,6 +34,8 @@
     --warn-soft: #3a2b12;
     --danger: #ff8a80;
     --danger-soft: #3d1a18;
+    --series-1: #3987e5;
+    --series-2: #d95926;
     color-scheme: dark;
   }
 }

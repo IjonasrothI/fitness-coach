@@ -12,6 +12,7 @@
   import { app } from '../lib/state.svelte';
   import { describePlanned } from '../lib/endurance';
   import { getWeek } from '../lib/weekStore';
+  import { getIntervalFormat } from '../lib/progressStore';
   import { todayKey } from '../lib/readiness';
   import type { PlannedItem } from '../lib/types';
   import type { Readiness } from '../lib/readiness';
@@ -27,6 +28,7 @@
   let ready = $state<Readiness | null>(null);
   let planned = $state<PlannedItem | null>(null);
   let deloadWeek = $state(false);
+  let intervalFormat = $state(0);
   let mode = $state<'main' | 'log' | 'test'>('main');
   let testKind = $state<TestKind>('cs');
   let prefill = $state<{ sport: Sport; type: Suggestion['type']; minutes: number } | undefined>(undefined);
@@ -47,13 +49,14 @@
     ready = await todayReadiness(profile);
     const w = await getWeek(profile);
     deloadWeek = w.deload;
+    intervalFormat = await getIntervalFormat(profile.id);
     planned = app.plannedEndurance ?? w.days.find((x) => x.date === todayKey())?.items.find((x) => x.kind === 'endurance') ?? null;
     app.plannedEndurance = null;
   }
   onMount(refresh);
 
-  let plannedSug = $derived(planned?.sport && planned.type ? describePlanned(profile, planned.sport, planned.type, planned.minutes, sessions, tests, ready?.caps, deloadWeek) : null);
-  let sug = $derived(suggest(profile, sport, minutes, sessions, strength, tests, new Date(), ready?.caps));
+  let plannedSug = $derived(planned?.sport && planned.type ? describePlanned(profile, planned.sport, planned.type, planned.minutes, sessions, tests, ready?.caps, deloadWeek, new Date(), intervalFormat) : null);
+  let sug = $derived(suggest(profile, sport, minutes, sessions, strength, tests, new Date(), ready?.caps, intervalFormat));
   let lr = $derived(longestRun(sessions, profile));
   let cs = $derived.by(() => { const t = latestTest(tests, 'cs'); return t ? criticalSpeed(t) : null; });
   let ftp = $derived(currentFtp(tests));

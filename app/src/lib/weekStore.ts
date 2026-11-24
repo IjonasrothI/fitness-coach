@@ -3,6 +3,7 @@ import { checkinHistory } from './checkinStore';
 import { db, getMeta, plain, setMeta, type CoachDB } from './db';
 import { strengthMinutes } from './endurance';
 import { listEndurance } from './enduranceStore';
+import { blockReview, undoProgressChange } from './progressStore';
 import {
   addDays, deloadDecision, defaultAvailability, fatigueSignals, learnAvailability, mondayOf, planWeek,
   weeksBetween, type WeekRecord
@@ -65,10 +66,14 @@ async function maybeLearn(p: Profile, weekStart: string, d: CoachDB): Promise<nu
   return r.avail;
 }
 
-async function decideDeload(p: Profile, weekStart: string, d: CoachDB): Promise<{ deload: boolean; reason: string; blockWeek: number }> {
-  // Nach einer Entlastungswoche beginnt ein neuer Block (F24)
+async function decideDeload(p: Profile, weekStart: string, d: CoachDB): Promise<{ deload: boolean; reason: string; blockWeek: number; notes: string[] }> {
+  // Nach einer Entlastungswoche beginnt ein neuer Block (F24) – mit Plateau-Auswertung (K18, F17)
   const prev = await d.weeks.get(`${p.id}:${addDays(weekStart, -7)}`);
-  if (prev?.deload) await setMeta(blockKey(p.id), weekStart, d);
+  let notes: string[] = [];
+  if (prev?.deload) {
+    await setMeta(blockKey(p.id), weekStart, d);
+    notes = await blockReview(p, weekStart, d);
+  }
   const blockStart = await getBlockStart(p, d);
   const blockWeek = Math.max(1, weeksBetween(blockStart, weekStart) + 1);
   const override = await getMeta<boolean | null>(deloadOverrideKey(p.id, weekStart), null, d);
@@ -84,9 +89,9 @@ async function decideDeload(p: Profile, weekStart: string, d: CoachDB): Promise<
   const greenRatio = lights.length >= 4 ? lights.filter((l) => l === 'green').length / lights.length : 0.5;
   const dec = deloadDecision(p, blockWeek, signals, greenRatio);
   if (override !== null) {
-    return { deload: override, blockWeek, reason: override ? 'Entlastungswoche von dir gewählt.' : 'Entlastungswoche von dir verschoben.' };
+    return { deload: override, blockWeek, notes, reason: override ? 'Entlastungswoche von dir gewählt.' : 'Entlastungswoche von dir verschoben.' };
   }
-  return { ...dec, blockWeek };
+  return { ...dec, blockWeek, notes };
 }
 
 /** Lädt die Woche oder legt sie an. */
@@ -101,7 +106,7 @@ export async function getWeek(p: Profile, weekStart = mondayOf(todayKey()), d: C
   const now = new Date().toISOString();
   const w: WeekPlan = {
     id: `${p.id}:${weekStart}`, profileId: p.id, weekStart, days, deload: dec.deload, blockWeek: dec.blockWeek,
-    why: dec.reason ? [dec.reason, ...why] : why, createdAt: now, updatedAt: now
+    why: [...(dec.reason ? [dec.reason] : []), ...dec.notes.map((n) => `Neuer Trainingsblock: ${n}`), ...why], createdAt: now, updatedAt: now
   };
   await d.weeks.put(plain(w));
   if (dec.deload) {
@@ -181,6 +186,8 @@ export async function undoWeekChange(p: Profile, c: ChangeLogEntry, d: CoachDB =
     const was = w.deload;
     await setMeta(deloadOverrideKey(p.id, w.weekStart), !was, d);
     await replan(p, { ...w, deload: !was }, d);
+  } else if (c.kind === 'volume' || c.kind === 'intervalFormat') {
+    return undoProgressChange(p, c, d);
   } else {
     return false;
   }
@@ -189,7 +196,7 @@ export async function undoWeekChange(p: Profile, c: ChangeLogEntry, d: CoachDB =
 }
 
 export async function weekChanges(pid: string, d: CoachDB = db): Promise<ChangeLogEntry[]> {
-  const all = await d.changes.where('profileId').equals(pid).filter((c) => c.kind === 'availability' || c.kind === 'deload').toArray();
+  const all = await d.changes.where('profileId').equals(pid).filter((c) => c.kind === 'availability' || c.kind === 'deload' || c.kind === 'volume' || c.kind === 'intervalFormat').toArray();
   return all.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10);
 }
 

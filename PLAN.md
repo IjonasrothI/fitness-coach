@@ -214,7 +214,7 @@ Tests werden automatisch eingeplant, in Deload-Wochen bzw. ausgeruhten Tagen, ni
 | ✅ M3 | Ausdauer: Erfassung, Feldtests (CS, Talktest), Zonen, Einzellauf-Regel | Lauf/Rad integriert |
 | ✅ M4 | Täglicher Check-in, Ampel, Sicherheits-Stopps, Schmerzregeln | Tagesanpassung |
 | ✅ M5 | Wochenplaner mit flexibler Zeit, Volumensteuerung, Deload, Änderungsprotokoll + Überschreiben | Volle Feedback-Loops |
-| M6 | Fortschrittsdiagramme, Lernen pro Person, Plateau-Erkennung, Blockwechsel | Langfristige Personalisierung |
+| M6 ✅ | Fortschrittsdiagramme, Lernen pro Person, Plateau-Erkennung, Blockwechsel | Langfristige Personalisierung |
 | später | Ernährung (siehe 11), quartalsweise Literatur-Updates | |
 
 Jeder Meilenstein wird mit Unit-Tests für die Engine und einem Test auf dem iPhone abgeschlossen.

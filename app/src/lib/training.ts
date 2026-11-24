@@ -57,7 +57,8 @@ export async function planSession(p: Profile, minutes: number, d: CoachDB = db, 
   const deload = await isDeloadToday(p, d);
   const calibrate = calibrationDue(await getLastCalibration(p.id, d)) && !caps?.noIntensity && !deload;
   const mins = caps?.recoveryOnly ? Math.min(minutes, 20) : minutes;
-  const plan = buildSession(eff, states, recent, mins, { rirOffset, calibrate });
+  const volumeBoost = await getMeta<number>(`volumeBoost:${p.id}`, 0, d);
+  const plan = buildSession(eff, states, recent, mins, { rirOffset, calibrate, volumeBoost });
   if (!caps && !deload) return plan;
   return plan.map((x) => {
     let sets = caps?.recoveryOnly ? Math.min(x.sets, 2) : x.sets;

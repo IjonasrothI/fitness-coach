@@ -279,12 +279,12 @@ export function swapAfterFeedback(
 
 // ---------- Wochenvolumen (K1–K4) ----------
 
-export function weeklyTarget(p: Profile, m: Muscle): number {
-  if (m === 'core' || m === 'calves') return 6;
+/** Wochenziel harte Sätze je Muskel; `boost` = Plateau-Zuschlag (K18, max. ~20). */
+export function weeklyTarget(p: Profile, m: Muscle, boost = 0): number {
+  if (m === 'core' || m === 'calves') return 6 + Math.floor(boost / 2);
   const f = p.goals.focus;
-  if (f <= 40) return 12;
-  if (f < 60) return 10;
-  return 8;
+  const base = f <= 40 ? 12 : f < 60 ? 10 : 8;
+  return Math.min(20, base + boost);
 }
 
 /** Fraktionale harte Sätze pro Muskel im Zeitraum (K2, K5). */
@@ -327,7 +327,7 @@ export function primaryMuscle(ex: Exercise): Muscle {
  */
 export function buildSession(
   p: Profile, states: PatternState[], recent: StrengthSession[], minutes: number,
-  opts: { rirOffset: number; calibrate: boolean; now?: Date }
+  opts: { rirOffset: number; calibrate: boolean; now?: Date; volumeBoost?: number }
 ): PlannedExercise[] {
   const now = opts.now ?? new Date();
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
@@ -340,7 +340,8 @@ export function buildSession(
     .map((s) => {
       const ex = EXERCISE_BY_ID[s.step.exerciseId]!;
       const m = primaryMuscle(ex);
-      const deficit = (weeklyTarget(p, m) - (vol[m] ?? 0)) / weeklyTarget(p, m);
+      const target = weeklyTarget(p, m, opts.volumeBoost ?? 0);
+      const deficit = (target - (vol[m] ?? 0)) / target;
       const info = PATTERN_BY_ID[s.pattern];
       return { s, ex, m, score: deficit + (info.compound ? 0.35 : 0) };
     })
@@ -348,7 +349,8 @@ export function buildSession(
 
   const plan: PlannedExercise[] = [];
   let used = 0;
-  const setsPer = minutes >= 50 ? 4 : minutes >= 30 ? 3 : 2;
+  // Plateau-Zuschlag (K18): +1 Satz je Muster, wenn die Zeit reicht
+  const setsPer = (minutes >= 50 ? 4 : minutes >= 30 ? 3 : 2) + ((opts.volumeBoost ?? 0) > 0 && minutes >= 30 ? 1 : 0);
   for (const c of candidates) {
     if (c.score <= -0.2 && plan.length >= 3) continue; // Muskel diese Woche schon gut versorgt
     const rest = restFor(c.ex, minutes);

@@ -83,14 +83,15 @@ export function trend(points: Point[], days: number, now = new Date(), opts: { m
  */
 export function patternSeries(sessions: StrengthSession[], p: Profile, rirOffset: number): Partial<Record<PatternId, Point[]>> {
   const out: Partial<Record<PatternId, Point[]>> = {};
-  const done = sessions.filter((s) => s.status === 'done' && s.kind === 'strength').sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  // Zirkel (kurze Arbeitszeit, Ermüdung von anderen Stationen) ist mit Einzelsätzen nicht vergleichbar (M7)
+  const done = sessions.filter((s) => s.status === 'done' && s.kind === 'strength' && s.format !== 'circuit').sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   for (const s of done) {
     const date = todayKey(new Date(s.startedAt));
     const patterns = [...new Set(s.sets.map((x) => x.pattern))];
     for (const pat of patterns) {
       const planned = s.plan.find((x) => x.pattern === pat);
       if (planned && (planned.deload || (planned.minRir ?? 0) >= 2)) continue;
-      const first = s.sets.find((x) => x.pattern === pat);
+      const first = s.sets.find((x) => x.pattern === pat && !x.estimated);
       if (!first) continue;
       const steps = ladder(pat, p, []);
       const step = { exerciseId: first.exerciseId, bandLevel: first.bandLevel };

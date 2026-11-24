@@ -215,6 +215,7 @@ Tests werden automatisch eingeplant, in Deload-Wochen bzw. ausgeruhten Tagen, ni
 | ✅ M4 | Täglicher Check-in, Ampel, Sicherheits-Stopps, Schmerzregeln | Tagesanpassung |
 | ✅ M5 | Wochenplaner mit flexibler Zeit, Volumensteuerung, Deload, Änderungsprotokoll + Überschreiben | Volle Feedback-Loops |
 | M6 ✅ | Fortschrittsdiagramme, Lernen pro Person, Plateau-Erkennung, Blockwechsel | Langfristige Personalisierung |
+| M7 ✅ | Neuer Kraft-Player: Animationen, Muskelkarte, Zeit-Sätze, Zirkel, Motivationsprofil (siehe 13) | Training macht Spaß, Hürde sinkt |
 | später | Ernährung (siehe 11), quartalsweise Literatur-Updates | |
 
 Jeder Meilenstein wird mit Unit-Tests für die Engine und einem Test auf dem iPhone abgeschlossen.
@@ -229,3 +230,35 @@ Foto-Erkennung per KI kostet API-Geld und ist pro Mahlzeit ungenau (~⅓ Untersc
 ## 12. Literatur-Updates
 
 Quartalsweise eine geplante Recherche (PubMed, Positionspapiere) → Update-Bericht mit „betrifft Regel K…/E…/F…". Regeln werden nur nach deiner Freigabe geändert (T12). Einrichtung nach M5.
+
+## 13. M7: Kraft-Training, das man gern macht
+
+Leitidee: Wer Krafttraining nicht mag, bleibt dran, wenn der Einstieg leicht ist, sich das Training machbar anfühlt und Fortschritt sichtbar wird (F23). Ein perfekter Plan nützt nichts, wenn er nicht gemacht wird.
+
+**Darstellung**
+- Eigene Animation für jede Übung: eine Strichfigur mit Gelenk-Keyframes, genau mit Band, Sofa und Kettlebell wie bei euch. Funktioniert offline, Tempo passend zur Ausführung (z. B. 3 s absenken).
+- Muskelkarte: Körper von vorn und hinten, Hauptmuskeln kräftig markiert, Hilfsmuskeln heller (aus den vorhandenen Muskelanteilen).
+- Großer, ruhiger Übungsbildschirm: Animation oben, die zwei wichtigsten Hinweise, große Knöpfe. Weitere Hinweise zum Aufklappen.
+
+**Abwechslung: drei Formate**
+- Klassisch: Wiederholungsziel mit Reserve (wie bisher).
+- Zeit-Satz: so viele saubere Wiederholungen wie möglich in 30–60 s (Standard 45 s), mit Countdown, Sprachansagen und Pieptönen. Fortschritt bedeutet mehr Wiederholungen in derselben Zeit; ab etwa 30 Wiederholungen kommt die schwerere Variante (K6).
+- Zirkel: 3–5 Übungen direkt nacheinander, z. B. 40 s Arbeit und 20 s Pause, 2–4 Runden. Zeitsparend und abwechslungsreich, die Sätze zählen trotzdem fürs Wochenvolumen.
+- Die App wechselt die Formate ab. Vor dem Start lässt sich die Stimmung wählen: „Fordernd“, „Locker“ oder „Kurz“.
+- Locker: 3–4 Wiederholungen Reserve, keine Eingabe nach jedem Satz, nur am Ende eine kurze Rückmeldung.
+
+**Motivation pro Profil**
+- Neue Profilfrage „Was motiviert dich?“: Fortschritt sehen, Abwechslung oder kurz und fertig. Davon hängen Format-Mix, Einheitslänge und Rückmeldungen ab.
+- „Nur 10 Minuten“-Start: immer verfügbar. Danach bietet die App eine Verlängerung an.
+- Persönliche Rekorde je Übung, z. B. „Neuer Rekord: 23 in 45 s“, und eine kurze Zusammenfassung am Ende.
+- Spaß-Bewertung pro Übung (Daumen hoch/runter): Ungeliebte Varianten werden seltener gewählt, sofern eine gleichwertige Alternative existiert.
+- Weniger tippen: Wiederholungen werden vorausgefüllt, die Reserve wird per Tipp auf eine Gesichterskala angegeben, im Locker-Modus und im Zirkel entfällt sie ganz.
+
+**Umgesetzt (M7)**
+- Strichfigur mit Gelenken und 2-Gelenk-IK, Animation für alle 47 Übungen samt Sofa, Band, Kettlebell, Stufe, Tisch (offline).
+- Muskelkarte vorn/hinten, Übungsbibliothek im Kraft-Tab.
+- Formate Klassisch / Zeit-Satz (45 s, einseitig 2 × 30 s) / Zirkel (40/20 s, 2–5 Runden, Unter- und Oberkörper im Wechsel). Fertigkeitsübungen nie unter Zeitdruck.
+- Stimmung Fordernd / Locker / Kurz, Motivationsfrage im Profil, automatisches Format mit Begründung, übersteuerbar.
+- „Nur 10 Minuten“ mit Angebot zur Verlängerung, Rekorde, Daumen hoch/runter, Gesichter-Skala für die Reserve, Sprachansagen (abschaltbar).
+- Zirkel-Sätze zählen fürs Wochenvolumen, verändern Stufen aber nur bei > 30 Wdh. (K6) und fließen nicht in die Kraftkurven ein.
+- Wochenplan: Einheiten bewusst unterschiedlich lang (z. B. 30 / 35 / 40 min bei 40 min Zeit); die Zeitangabe ist eine Obergrenze.

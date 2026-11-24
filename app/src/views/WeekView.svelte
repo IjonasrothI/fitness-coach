@@ -5,7 +5,7 @@
   import { addDays, itemStatus, mondayOf, weekMinutes, type ItemStatus } from '../lib/planner';
   import { todayKey } from '../lib/readiness';
   import { app } from '../lib/state.svelte';
-  import { recentSessions, startSession } from '../lib/training';
+  import { recentSessions } from '../lib/training';
   import type { ChangeLogEntry, EnduranceSession, EnduranceType, PlannedItem, Profile, StrengthSession, WeekPlan } from '../lib/types';
   import { editItem, getWeek, moveItem, rebuildWeek, setAvailability, setDeload, undoWeekChange, weekChanges } from '../lib/weekStore';
 
@@ -64,7 +64,9 @@
     sheet = null;
     if (it.kind === 'strength') {
       busy = true;
-      app.session = await startSession(profile, it.minutes);
+      app.strengthMinutes = it.minutes;
+      app.view = 'strength';
+      window.scrollTo(0, 0);
       busy = false;
     } else {
       app.plannedEndurance = it;

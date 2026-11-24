@@ -45,3 +45,46 @@ export async function keepAwake(on: boolean): Promise<void> {
     lock = null;
   }
 }
+
+/** Kurzer, hoher Ton (Countdown 3-2-1). */
+export function tick(high = false): void {
+  try {
+    if (!ctx) return;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.frequency.value = high ? 1320 : 660;
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (high ? 0.35 : 0.12));
+    o.connect(g).connect(ctx.destination);
+    o.start(t);
+    o.stop(t + 0.4);
+  } catch {
+    /* kein Ton möglich */
+  }
+}
+
+const VOICE_KEY = 'coach:voice';
+export function voiceOn(): boolean {
+  try { return localStorage.getItem(VOICE_KEY) !== 'off'; } catch { return true; }
+}
+export function setVoice(on: boolean): void {
+  try { localStorage.setItem(VOICE_KEY, on ? 'on' : 'off'); } catch { /* egal */ }
+}
+
+/** Sprachansage auf Deutsch (offline über die Systemstimme), falls eingeschaltet. */
+export function say(text: string): void {
+  try {
+    if (!voiceOn() || !('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'de-DE';
+    u.rate = 1.05;
+    const v = speechSynthesis.getVoices().find((x) => x.lang.startsWith('de'));
+    if (v) u.voice = v;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch {
+    /* keine Sprachausgabe */
+  }
+}

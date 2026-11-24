@@ -5,17 +5,25 @@
   import { todayReadiness } from '../lib/checkinStore';
   import type { Readiness } from '../lib/readiness';
   import { app } from '../lib/state.svelte';
-  import { estimateMinutes, FEEDBACK_LABELS, muscleVolume, stepLabel, weeklyTarget } from '../lib/strength';
+  import { FEEDBACK_LABELS, muscleVolume, stepLabel, weeklyTarget } from '../lib/strength';
   import {
-    ensureStates, feedbackExport, getRirOffset, planSession, recentChanges, recentSessions, startSession, undoChange
+    ensureStates, feedbackExport, getRirOffset, planStrength, recentChanges, recentSessions, startSession, undoChange,
+    type StrengthPlan
   } from '../lib/training';
-  import type { ChangeLogEntry, Muscle, PatternState, PlannedExercise, Profile } from '../lib/types';
+  import {
+    estimateShaped, FORMAT_INFO, FORMAT_LABELS, MOOD_INFO, MOOD_LABELS, MOTIVATION_INFO, MOTIVATION_LABELS
+  } from '../lib/formats';
+  import type { ChangeLogEntry, Mood, Motivation, Muscle, PatternState, Profile, StrengthFormat } from '../lib/types';
 
   let { profile }: { profile: Profile } = $props();
 
   // svelte-ignore state_referenced_locally
-  let minutes = $state(profile.availability.typicalMinutes);
-  let preview = $state<PlannedExercise[]>([]);
+  let minutes = $state(app.strengthMinutes ?? profile.availability.typicalMinutes);
+  // svelte-ignore state_referenced_locally
+  const fromPlan = app.strengthMinutes !== null;
+  let mood = $state<Mood>('push');
+  let format = $state<StrengthFormat | undefined>(undefined);
+  let sp = $state<StrengthPlan | null>(null);
   let states = $state<PatternState[]>([]);
   let volume = $state<Partial<Record<Muscle, number>>>({});
   let changes = $state<ChangeLogEntry[]>([]);
@@ -29,21 +37,39 @@
     rirOffset = await getRirOffset(profile.id);
     volume = muscleVolume(await recentSessions(profile.id, 7), rirOffset, new Date(Date.now() - 7 * 86400000));
     changes = await recentChanges(profile.id, 10);
-    preview = await planSession(profile, minutes);
+    await replan();
   }
-  onMount(refresh);
+  onMount(() => {
+    app.strengthMinutes = null;
+    void refresh();
+  });
 
-  async function pick(m: number) {
-    minutes = m;
-    preview = await planSession(profile, minutes);
+  async function replan() {
+    sp = await planStrength(profile, minutes, { mood, format });
   }
+  async function pick(m: number) { minutes = m; await replan(); }
+  async function pickMood(m: Mood) { mood = m; format = undefined; await replan(); }
+  async function pickFormat(f: StrengthFormat) { format = f === sp?.auto ? undefined : f; await replan(); }
 
+  function okToTrain(): boolean {
+    if (ready?.caps.hardStop) return false;
+    if (ready?.caps.noTraining && !confirm('Laut Check-in bist du heute krank. Wirklich trainieren? Empfohlen ist Pause.')) return false;
+    return true;
+  }
   async function start() {
-    if (ready?.caps.hardStop) return;
-    if (ready?.caps.noTraining && !confirm('Laut Check-in bist du heute krank. Wirklich trainieren? Empfohlen ist Pause.')) return;
+    if (!okToTrain()) return;
     starting = true;
-    app.session = await startSession(profile, minutes);
+    app.session = await startSession(profile, minutes, undefined, { mood, format });
     starting = false;
+  }
+  async function startQuick() {
+    if (!okToTrain()) return;
+    starting = true;
+    app.session = await startSession(profile, 10, undefined, { mood: 'short', format: 'circuit', quick: true });
+    starting = false;
+  }
+  async function setMotivation(m: Motivation) {
+    await app.save({ ...profile, motivation: m });
   }
 
   async function undo(c: ChangeLogEntry) {
@@ -69,7 +95,7 @@
   let totalUpper = $derived(states.filter((s) => PATTERN_BY_ID[s.pattern].half === 'upper').length);
   const muscles: Muscle[] = ['chest', 'upperBack', 'lats', 'shoulders', 'biceps', 'triceps', 'quads', 'glutes', 'hamstrings', 'calves', 'core'];
   // svelte-ignore state_referenced_locally
-  const minuteOptions = [...new Set([20, 30, 45, 60, profile.availability.typicalMinutes])].sort((a, b) => a - b);
+  const minuteOptions = [...new Set([20, 30, 45, 60, profile.availability.typicalMinutes, minutes])].sort((a, b) => a - b);
 </script>
 
 <main>
@@ -88,27 +114,76 @@
     </div>
   {/if}
 
+  {#if !profile.motivation}
+    <div class="card accent">
+      <h3>Was motiviert dich beim Krafttraining?</h3>
+      <p class="small muted">Danach richtet die App den Mix aus Trainingsformen aus. Jederzeit im Profil änderbar.</p>
+      <div class="motis">
+        {#each Object.keys(MOTIVATION_LABELS) as k (k)}
+          {@const m = k as Motivation}
+          <button onclick={() => setMotivation(m)}><b>{MOTIVATION_LABELS[m]}</b><span class="small muted">{MOTIVATION_INFO[m]}</span></button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <button class="primary block quick" onclick={startQuick} disabled={starting || ready?.caps.hardStop}>
+    Nur 10 Minuten<span>kurzer Zirkel – danach kannst du verlängern</span>
+  </button>
+
   <div class="card">
-    <h3>Neue Einheit</h3>
-    <p class="small muted">Wie viel Zeit hast du?</p>
-    <div class="mins">
-      {#each minuteOptions as m (m)}
-        <button class:on={minutes === m} onclick={() => pick(m)}>{m} min</button>
+    <h3>Neue Einheit{fromPlan ? ' (aus deinem Wochenplan)' : ''}</h3>
+    <p class="small muted">Wie fühlst du dich?</p>
+    <div class="chips three" role="radiogroup" aria-label="Stimmung">
+      {#each Object.keys(MOOD_LABELS) as k (k)}
+        {@const m = k as Mood}
+        <button role="radio" aria-checked={mood === m} class:on={mood === m} onclick={() => pickMood(m)}>{MOOD_LABELS[m]}</button>
       {/each}
     </div>
-    {#if preview.length}
-      <ul class="plan">
-        {#each preview as x (x.pattern)}
-          <li>
-            <span>{stepLabel(x, profile)}</span>
-            <span class="muted small">{x.sets}× {x.repWindow[0]}–{x.repWindow[1]}{x.calibrationLastSet ? ' · Kalibrierung' : ''}</span>
-          </li>
+    <p class="small muted hint">{MOOD_INFO[mood]}</p>
+
+    {#if mood !== 'short'}
+      <p class="small muted">Wie viel Zeit hast du?</p>
+      <div class="mins">
+        {#each minuteOptions as m (m)}
+          <button class:on={minutes === m} onclick={() => pick(m)}>{m} min</button>
         {/each}
-      </ul>
-      <p class="small muted">≈ {estimateMinutes(preview)} min inkl. Aufwärmen</p>
+      </div>
     {/if}
-    <button class="primary block" onclick={start} disabled={starting || !preview.length || ready?.caps.hardStop}>{ready?.caps.noTraining && !ready.caps.hardStop ? 'Trotzdem starten' : 'Training starten'}</button>
+
+    {#if sp}
+      <p class="small muted">Form</p>
+      <div class="chips three" role="radiogroup" aria-label="Trainingsform">
+        {#each ['classic', 'timed', 'circuit'] as k (k)}
+          {@const f = k as StrengthFormat}
+          <button role="radio" aria-checked={sp.format === f} class:on={sp.format === f} onclick={() => pickFormat(f)} disabled={mood === 'easy' && f === 'classic'}>
+            {FORMAT_LABELS[f]}{sp.auto === f ? ' ★' : ''}
+          </button>
+        {/each}
+      </div>
+      <p class="small hint">{FORMAT_INFO[sp.format]}</p>
+      {#each sp.why as w (w)}<p class="small muted hint">{w}</p>{/each}
+
+      {#if sp.plan.length}
+        <ul class="plan">
+          {#each sp.plan as x (x.pattern)}
+            <li>
+              <span>{stepLabel(x, profile)}</span>
+              <span class="muted small">
+                {#if sp.circuit}{sp.circuit.workSec} s je Runde
+                {:else if x.workSec}{x.sets}× {x.workSec} s{EXERCISE_BY_ID[x.exerciseId]?.unilateral ? ' pro Seite' : ''}
+                {:else}{x.sets}× {x.repWindow[0]}–{x.repWindow[1]} Wdh.{x.calibrationLastSet ? ' · Kalibrierung' : ''}{/if}
+              </span>
+            </li>
+          {/each}
+        </ul>
+        <p class="small muted">{sp.circuit ? `${sp.circuit.rounds} Runden · ` : ''}≈ {estimateShaped(sp.plan, sp.circuit)} min{sp.circuit ? '' : ' inkl. Aufwärmen'}</p>
+      {/if}
+    {/if}
+    <button class="primary block" onclick={start} disabled={starting || !sp?.plan.length || ready?.caps.hardStop}>{ready?.caps.noTraining && !ready.caps.hardStop ? 'Trotzdem starten' : 'Training starten'}</button>
   </div>
+
+  <button class="block" onclick={() => { app.library = true; window.scrollTo(0, 0); }}>Alle Übungen ansehen</button>
 
   <h2>Einstufung</h2>
   <p class="small muted">Findet für jedes Bewegungsmuster die Variante, bei der du in 8–20 Wdh. ans Limit kommst. Am besten Unter- und Oberkörper an verschiedenen Tagen, ausgeruht.</p>
@@ -176,6 +251,15 @@
   .mins { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; margin-bottom: 12px; }
   .mins button { border: 1.5px solid var(--line); background: var(--surface); padding: 10px 4px; font-weight: 600; }
   .mins button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .chips { display: grid; gap: 6px; margin-bottom: 6px; }
+  .chips.three { grid-template-columns: repeat(3, 1fr); }
+  .chips button { border: 1.5px solid var(--line); background: var(--surface); padding: 10px 4px; font-weight: 600; font-size: 15px; }
+  .chips button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .hint { margin: 0 0 10px; }
+  .quick { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 64px; font-size: 18px; }
+  .quick span { font-size: 13px; font-weight: 500; opacity: 0.85; }
+  .motis { display: grid; gap: 8px; }
+  .motis button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: var(--surface); border: 1.5px solid var(--line); padding: 10px 12px; }
   .plan { list-style: none; padding: 0; margin: 0 0 8px; }
   .plan li { display: flex; flex-direction: column; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .place { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: var(--surface); border: 1px solid var(--line); }

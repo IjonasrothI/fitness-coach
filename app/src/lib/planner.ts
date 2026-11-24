@@ -153,8 +153,14 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
     sDays = spreadDays(strengthPool, sTarget, (picked) => (hardFree(picked) ? 5 : 0));
     why.push('Eine Krafteinheit weniger, damit zwischen zwei Ganzkörpereinheiten mindestens ein Tag Pause liegt.');
   }
+  // Verfügbare Zeit ist eine Obergrenze, kein Muss: Einheiten bewusst unterschiedlich lang (F23)
+  let varied = 0;
+  let shortened = false;
   for (const i of sDays) {
-    days[i]!.items.push({ id: nid(), kind: 'strength', minutes: clampMin(days[i]!.availableMin, 20, 60) });
+    const full = clampMin(days[i]!.availableMin, 20, 60);
+    const minutes = varyMinutes(full, o.weekStart, varied++, 'strength');
+    if (minutes < full) shortened = true;
+    days[i]!.items.push({ id: nid(), kind: 'strength', minutes });
   }
 
   // ---- Ausdauer ----
@@ -182,6 +188,11 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
       const sport = pickSport(p, days[i]!.date, type, i);
       const max = type === 'long' ? 150 : type === 'easy' ? 75 : 70;
       let minutes = clampMin(days[i]!.availableMin, 20, max);
+      if (type !== 'long') {
+        const v = varyMinutes(minutes, o.weekStart, varied++, type);
+        if (v < minutes) shortened = true;
+        minutes = v;
+      }
       if (o.deload) minutes = Math.max(20, Math.round((minutes * 0.6) / 5) * 5);
       days[i]!.items.push({ id: nid(), kind: 'endurance', sport, type, minutes });
     }
@@ -202,6 +213,9 @@ export function planWeek(p: Profile, avail: number[], o: PlanOptions): { days: D
     }
   }
 
+  if (shortened) {
+    why.push('Einheiten sind bewusst unterschiedlich lang – deine Zeitangabe ist eine Obergrenze, kein Muss. Kürzere Tage entlasten, längere bringen Reiz.');
+  }
   if (o.deload) {
     why.push('Entlastungswoche: Krafttraining mit etwa halb so vielen Sätzen und 3 Wdh. Reserve, Ausdauer 40 % kürzer und nur locker (F13).');
   } else if (eDays.length >= 3) {
@@ -214,6 +228,27 @@ function minGap(days: number[]): number {
   let g = 7;
   for (let i = 0; i + 1 < days.length; i++) g = Math.min(g, days[i + 1]! - days[i]!);
   return g;
+}
+
+/**
+ * Variiert die Dauer einer Einheit innerhalb der verfügbaren Zeit (deterministisch je Woche,
+ * damit Neuplanen stabil bleibt). Etwa jede dritte Einheit nutzt die volle Zeit.
+ */
+const VARY: Record<string, number[]> = {
+  strength: [1, 0.85, 0.75, 1, 0.9, 0.8],
+  easy: [0.85, 1, 0.75, 0.9, 1, 0.8],
+  recovery: [0.75, 0.85],
+  intervals: [1, 0.9, 0.85],
+  tempo: [0.9, 1, 0.85],
+  test: [1]
+};
+export function varyMinutes(full: number, weekStart: string, k: number, kind: string): number {
+  const f = VARY[kind] ?? [1];
+  let h = 0;
+  for (const ch of weekStart) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  const factor = f[(h + k * 2) % f.length]!;
+  const m = Math.round((full * factor) / 5) * 5;
+  return Math.max(Math.min(full, 20), Math.min(full, m));
 }
 
 function clampMin(v: number, lo: number, hi: number) {

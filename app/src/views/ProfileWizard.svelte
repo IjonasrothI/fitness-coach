@@ -6,7 +6,8 @@
   } from '../lib/defaults';
   import { clearance, fmt, maxHr, validateProfile, weeklyMinutes } from '../lib/derive';
   import { app } from '../lib/state.svelte';
-  import type { AnchorKey, BodyRegion, GoalArea, Level, Profile, Weekday } from '../lib/types';
+  import { MOTIVATION_INFO, MOTIVATION_LABELS } from '../lib/formats';
+  import type { AnchorKey, BodyRegion, GoalArea, Level, Motivation, Profile, Weekday } from '../lib/types';
 
   interface Props { initial: Profile; mode: 'new' | 'edit'; startStep?: number }
   let { initial, mode, startStep = 0 }: Props = $props();
@@ -18,6 +19,7 @@
   // svelte-ignore state_referenced_locally
   let step = $state(startStep);
   let errors = $state<string[]>([]);
+  const motivationOptions = (Object.keys(MOTIVATION_LABELS) as Motivation[]).map((m) => ({ value: m, label: MOTIVATION_LABELS[m] }));
   let saving = $state(false);
 
   const STEPS = ['Über dich', 'Gesundheit', 'Ziele', 'Erfahrung', 'Zeit', 'Equipment', 'Ausdauer', 'Überblick'];
@@ -199,6 +201,10 @@
       <input type="range" min="1" max="10" bind:value={p.goals.sessionsPerWeek} />
     </label>
     <p class="muted small">Das ist dein Prozessziel. Die App feiert Regelmäßigkeit, nicht Perfektion – eine ausgelassene Einheit pro Woche bricht keine Serie.</p>
+    <div class="field"><span class="lbl">Was motiviert dich beim Krafttraining?</span>
+      <Choice options={motivationOptions} bind:value={p.motivation} columns={1} />
+      {#if p.motivation}<span class="small muted">{MOTIVATION_INFO[p.motivation]}</span>{/if}
+    </div>
 
   {:else if step === 3}
     <p class="muted">Bestimmt Startniveau und Progressionstempo.</p>

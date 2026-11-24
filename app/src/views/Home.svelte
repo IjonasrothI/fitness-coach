@@ -10,7 +10,7 @@
   import { getWeek } from '../lib/weekStore';
   import { itemStatus } from '../lib/planner';
   import { listEndurance } from '../lib/enduranceStore';
-  import { recentSessions, startSession } from '../lib/training';
+  import { recentSessions } from '../lib/training';
   import { SPORT_LABELS, TYPE_LABELS } from '../lib/endurance';
   import type { EnduranceSession, PlannedItem, StrengthSession, WeekPlan } from '../lib/types';
 
@@ -29,7 +29,9 @@
 
   async function startItem(it: PlannedItem) {
     if (it.kind === 'strength') {
-      app.session = await startSession(profile, it.minutes);
+      app.strengthMinutes = it.minutes;
+      app.view = 'strength';
+      window.scrollTo(0, 0);
     } else {
       app.plannedEndurance = it;
       app.view = 'endurance';

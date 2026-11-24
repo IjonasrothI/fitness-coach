@@ -84,6 +84,9 @@ export interface EnduranceSetup {
   bikeIndoorPower: boolean;
 }
 
+/** Was motiviert beim Krafttraining (M7) */
+export type Motivation = 'progress' | 'variety' | 'quick';
+
 export interface Profile {
   id: string;
   name: string;
@@ -99,6 +102,8 @@ export interface Profile {
   endurance: EnduranceSetup;
   /** F28: nur mit Einwilligung */
   cycleTrackingConsent: boolean;
+  /** M7: steuert Format-Mix, Länge und Rückmeldungen (fehlt bei alten Profilen) */
+  motivation?: Motivation;
   createdAt: string;
   updatedAt: string;
 }
@@ -201,6 +206,10 @@ export interface SetLog {
   rir: number;
   calibration?: CalibrationResult;
   at: string;
+  /** Zeit-Satz/Zirkel: Arbeitszeit in s (Wdh. = so viele wie möglich in dieser Zeit) */
+  workSec?: number;
+  /** Locker-Modus: Wdh. nicht eingegeben, sondern vorgeschlagen – zählt fürs Volumen, nicht für Rekorde */
+  estimated?: boolean;
 }
 
 export interface PlannedExercise {
@@ -216,6 +225,22 @@ export interface PlannedExercise {
   minRir?: number;
   /** Entlastungswoche (M5) */
   deload?: boolean;
+  /** Zeit-Satz (M7): so viele saubere Wdh. wie möglich in dieser Zeit (pro Seite bei einseitigen Übungen) */
+  workSec?: number;
+  /** Zirkel-Block (Verlängerung von „Nur 10 Minuten“ = Block 1) */
+  block?: number;
+}
+
+/** Trainingsform (M7) */
+export type StrengthFormat = 'classic' | 'timed' | 'circuit';
+/** Stimmung vor dem Start (M7) */
+export type Mood = 'push' | 'easy' | 'short';
+
+export interface CircuitSpec {
+  rounds: number;
+  workSec: number;
+  restSec: number;
+  roundRestSec: number;
 }
 
 export interface PainEntry {
@@ -236,6 +261,11 @@ export interface StrengthSession {
   sRpe?: number;
   enjoyment?: number;
   pain?: PainEntry[];
+  format?: StrengthFormat;
+  mood?: Mood;
+  circuit?: CircuitSpec;
+  /** „Nur 10 Minuten“-Start (M7) */
+  quick?: boolean;
 }
 
 export type FeedbackReason =

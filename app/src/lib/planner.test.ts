@@ -130,3 +130,15 @@ describe('Status & Lernen', () => {
     expect(learnAvailability([40, 0, 0, 0, 0, 0, 0], [])).toBeNull();
   });
 });
+
+describe('Flexible Einheitsdauer', () => {
+  it('variiert innerhalb der verfügbaren Zeit, nie darüber, mind. 20 min', async () => {
+    const { varyMinutes } = await import('./planner');
+    const vals = [0, 1, 2, 3, 4, 5].map((k) => varyMinutes(40, '2026-11-23', k, 'easy'));
+    expect(new Set(vals).size).toBeGreaterThan(1);
+    expect(Math.max(...vals)).toBeLessThanOrEqual(40);
+    expect(Math.min(...vals)).toBeGreaterThanOrEqual(30);
+    expect(varyMinutes(20, '2026-11-23', 1, 'strength')).toBe(20);
+    expect(varyMinutes(40, '2026-11-23', 3, 'easy')).toBe(varyMinutes(40, '2026-11-23', 3, 'easy'));
+  });
+});

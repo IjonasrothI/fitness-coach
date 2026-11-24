@@ -13,6 +13,7 @@
   import ProgressView from './views/ProgressView.svelte';
   import Player from './views/Player.svelte';
   import Placement from './views/Placement.svelte';
+  import ExerciseLibrary from './views/ExerciseLibrary.svelte';
 
   const { needRefresh, updateServiceWorker } = useRegisterSW();
 
@@ -60,6 +61,8 @@
 {:else}
   {#if app.view === 'home'}
     <Home profile={app.active} />
+  {:else if app.view === 'strength' && app.library}
+    <ExerciseLibrary />
   {:else if app.view === 'strength'}
     <StrengthView profile={app.active} />
   {:else if app.view === 'endurance'}

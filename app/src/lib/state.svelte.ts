@@ -19,6 +19,10 @@ class AppState {
   placement = $state<'lower' | 'upper' | null>(null);
   /** Aus dem Wochenplan gewählte Ausdauereinheit */
   plannedEndurance = $state<PlannedItem | null>(null);
+  /** Übungsbibliothek (M7) */
+  library = $state(false);
+  /** Krafteinheit aus Heute/Woche: Startbildschirm mit vorgewählter Dauer öffnen */
+  strengthMinutes = $state<number | null>(null);
 
   active = $derived(this.profiles.find((p) => p.id === this.activeId) ?? null);
   /** Erinnerung 14 Tage nach letzter Sicherung bzw. nach Anlegen des ersten Profils */

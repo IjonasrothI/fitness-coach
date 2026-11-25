@@ -24,7 +24,7 @@ class AppState {
   /** Krafteinheit aus Heute/Woche: Startbildschirm mit vorgewählter Dauer öffnen */
   strengthMinutes = $state<number | null>(null);
   /** Laufende Tagesroutine (M8, Vollbild) */
-  routine = $state<{ kind: RoutineKind; items: RoutineItem[]; gentle: boolean } | null>(null);
+  routine = $state<{ kind: RoutineKind; items: RoutineItem[]; gentle: boolean; restSec: number } | null>(null);
 
   active = $derived(this.profiles.find((p) => p.id === this.activeId) ?? null);
   /** Erinnerung 14 Tage nach letzter Sicherung bzw. nach Anlegen des ersten Profils */

@@ -4,7 +4,8 @@
   import { MOTIONS } from '../lib/motions';
   import { EXERCISES, PATTERNS } from '../lib/exercises';
   import { app } from '../lib/state.svelte';
-  import { MOBILITY } from '../lib/mobility';
+  import { routineCatalog } from '../lib/mobility';
+  const MOBILITY = routineCatalog('morning');
 
   let open = $state<string | null>(null);
   // Entwicklung: ?gallery zeigt alle Animationen gleichzeitig

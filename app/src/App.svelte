@@ -43,7 +43,7 @@
     <Player profile={app.active} initial={app.session} />
   {/key}
 {:else if app.active && app.routine}
-  <RoutinePlayer profile={app.active} kind={app.routine.kind} items={app.routine.items} gentle={app.routine.gentle} />
+  <RoutinePlayer profile={app.active} kind={app.routine.kind} items={app.routine.items} gentle={app.routine.gentle} restSec={app.routine.restSec} />
 {:else if app.active && app.placement}
   {#key app.placement}
     <Placement profile={app.active} half={app.placement} />

@@ -401,12 +401,18 @@ export interface RoutineItem {
   id: string;
   /** Dauer in s (bei einseitigen Übungen je Seite) */
   sec: number;
+  /** Runde (nur im Ablauf, wenn die Routine mehrere Runden hat) */
+  round?: number;
 }
 
 export interface RoutineSetup {
   items: RoutineItem[];
-  /** direkt nach dem Check-in starten */
+  /** direkt nach dem Check-in starten (nur Morgenroutine) */
   autoStart: boolean;
+  /** Runden (Abend: 2) */
+  rounds?: number;
+  /** Pause vor jeder Übung in s (Abend: 20) */
+  restSec?: number;
 }
 
 export interface RoutineLog {
@@ -420,9 +426,12 @@ export interface RoutineLog {
   status: 'running' | 'done' | 'partial' | 'skipped';
   /** Übungen in der Reihenfolge, wie sie gemacht wurden */
   items: RoutineItem[];
+  /** Schritt-Schlüssel (stepKey): ID bzw. ID#Runde */
   done: string[];
   skipped: string[];
   gentle: boolean;
+  /** Pause vor jeder Übung (fehlt → Vorlauf der Morgenroutine) */
+  restSec?: number;
   /** tatsächliche Übungszeit in s */
   seconds: number;
 }

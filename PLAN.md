@@ -216,7 +216,7 @@ Tests werden automatisch eingeplant, in Deload-Wochen bzw. ausgeruhten Tagen, ni
 | ✅ M5 | Wochenplaner mit flexibler Zeit, Volumensteuerung, Deload, Änderungsprotokoll + Überschreiben | Volle Feedback-Loops |
 | M6 ✅ | Fortschrittsdiagramme, Lernen pro Person, Plateau-Erkennung, Blockwechsel | Langfristige Personalisierung |
 | M7 ✅ | Neuer Kraft-Player: Animationen, Muskelkarte, Zeit-Sätze, Zirkel, Motivationsprofil (siehe 13) | Training macht Spaß, Hürde sinkt |
-| M8 🔶 | Tagesroutinen: Morgen-Mobility nach dem Check-in ✅, Abendroutine (Übungen werden vorher abgestimmt) (siehe 14) | Konstanz durch tägliche Gewohnheit |
+| M8 ✅ | Tagesroutinen: Morgen-Mobility nach dem Check-in, lockere Abendroutine (siehe 14) | Konstanz durch tägliche Gewohnheit |
 | später | Ernährung (siehe 11), quartalsweise Literatur-Updates | |
 
 Jeder Meilenstein wird mit Unit-Tests für die Engine und einem Test auf dem iPhone abgeschlossen.
@@ -274,4 +274,9 @@ Leitidee: Wer Krafttraining nicht mag, bleibt dran, wenn der Einstieg leicht ist
 - Übungen, Reihenfolge und Dauer frei anpassbar; sie bleiben täglich gleich, bis man sie ändert. Katalog mit 15 Übungen und eigenen Animationen.
 - Tagesform: Rot/krank → sanfte Version (gleiche Übungen, ca. 65 % der Zeit, kein Autostart bei krank); Warnzeichen → keine Routine.
 - Protokoll je Tag (erledigt/teilweise/übersprungen), 7-Tage-Punkte auf „Heute"; in der Sicherung enthalten.
+
+**Umgesetzt (Abendroutine)**
+- 5 feste Übungen: Liegestütz, Rudern mit Band, Kniebeuge mit Kettlebell, Hüftheben, Unterarmstütz – 2 Runden, 40 s Arbeit / 20 s Pause, ca. 10 min, 3–4 Wdh. Reserve.
+- Austauschbar gegen einfachere Varianten (Liegestütz erhöht, Rudern sitzend, Kniebeuge ohne Gewicht, Ausfallschritt, Seitstütz, Käfer) oder Mobility; höchstens 5 Übungen; Runden (1–3) und Pause einstellbar.
+- Entfällt an Tagen mit Krafttraining (geplant oder erledigt), „Trotzdem starten" möglich. Rote Ampel → nur 1 Runde. Zählt nicht zu den Einheiten pro Woche.
 

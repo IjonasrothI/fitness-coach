@@ -391,5 +391,7 @@ export const MOTIONS: Record<string, Motion> = {
   reverseCrunch: reverseCrunch(),
   hollowRock: hollow(),
   dragonFlagNeg: dragonFlag(),
+  rtAirSquat: squat(),
+  rtBridge: bridge(),
   ...MOBILITY_MOTIONS
 };

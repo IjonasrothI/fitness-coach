@@ -12,9 +12,11 @@
     /** Vorlauf in s (3-2-1) */
     countIn?: number;
     note?: string;
+    /** Text während des Vorlaufs (z. B. „Pause") */
+    countLabel?: string;
     ondone: () => void;
   }
-  let { seconds, sides = 1, switchAtHalf = false, countIn = 3, note = '', ondone }: Props = $props();
+  let { seconds, sides = 1, switchAtHalf = false, countIn = 3, note = '', countLabel = "Gleich geht's los …", ondone }: Props = $props();
 
   type Phase = 'count' | 'work' | 'switch';
   // svelte-ignore state_referenced_locally
@@ -111,7 +113,7 @@
     <div class="num">{left}</div>
   </div>
   <p class="phase">
-    {#if phase === 'count'}Gleich geht's los …
+    {#if phase === 'count'}{countLabel}
     {:else if phase === 'switch'}Seite wechseln
     {:else}{sides === 2 ? `Seite ${side} von 2 · ` : ''}{note || 'So viele saubere Wdh. wie möglich'}{/if}
   </p>

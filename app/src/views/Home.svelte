@@ -12,10 +12,11 @@
   import { listEndurance } from '../lib/enduranceStore';
   import { recentSessions } from '../lib/training';
   import { SPORT_LABELS, TYPE_LABELS } from '../lib/endurance';
-  import type { EnduranceSession, PlannedItem, RoutineLog, StrengthSession, WeekPlan } from '../lib/types';
+  import type { EnduranceSession, PlannedItem, RoutineKind, StrengthSession, WeekPlan } from '../lib/types';
   import RoutineEditor from './RoutineEditor.svelte';
-  import { routineForToday, routineMinutesLabel, routineSetup } from '../lib/mobility';
-  import { getRoutineLog, resumeIndex, routineDays } from '../lib/routineStore';
+  import RoutineCard from '../components/RoutineCard.svelte';
+  import { routineForToday, routineSetup } from '../lib/mobility';
+  import { getRoutineLog } from '../lib/routineStore';
 
   let { profile }: { profile: Profile } = $props();
 
@@ -23,21 +24,18 @@
   let history = $state<CheckIn[]>([]);
   let ready = $state<Readiness | null>(null);
   let formOpen = $state(false);
-  let editRoutine = $state(false);
-  let morningLog = $state<RoutineLog | undefined>(undefined);
-  let morningDays = $state<{ date: string; status: string }[]>([]);
-  let morning = $derived(routineForToday(routineSetup(profile, 'morning').items,
-    ready ? { light: ready.light, hardStop: ready.caps.hardStop, noTraining: ready.caps.noTraining } : null));
+  let editRoutine = $state<RoutineKind | null>(null);
+  let cardKey = $state(0);
 
-  function startMorning() {
-    app.routine = { kind: 'morning', items: morning.items, gentle: morning.gentle };
-    window.scrollTo(0, 0);
-  }
   /** Nach dem ersten Check-in des Tages direkt in die Morgenroutine (abschaltbar im Editor). */
-  function autoStartMorning() {
-    if (!routineSetup(profile, 'morning').autoStart || !morning.autoStartOk || morning.blocked) return;
-    if (morningLog && morningLog.status !== 'running') return;
-    startMorning();
+  async function autoStartMorning() {
+    const setup = routineSetup(profile, 'morning');
+    const r = routineForToday(setup, ready ? { light: ready.light, hardStop: ready.caps.hardStop, noTraining: ready.caps.noTraining } : null);
+    if (!setup.autoStart || !r.autoStartOk || r.blocked) return;
+    const log = await getRoutineLog(profile.id, 'morning');
+    if (log && log.status !== 'running') return;
+    app.routine = { kind: 'morning', items: r.items, gentle: r.gentle, restSec: r.restSec };
+    window.scrollTo(0, 0);
   }
   let loaded = $state(false);
 
@@ -45,6 +43,12 @@
   let strengthDone = $state<StrengthSession[]>([]);
   let enduranceDone = $state<EnduranceSession[]>([]);
   let todayItems = $derived(week?.days.find((x) => x.date === todayKey())?.items ?? []);
+  /** Abendroutine entfällt an Tagen mit intensivem Krafttraining (erledigt oder geplant). */
+  let eveningRest = $derived.by(() => {
+    if (strengthDone.some((x) => todayKey(new Date(x.startedAt)) === todayKey())) return 'Heute entfällt sie – du hattest schon Krafttraining.';
+    if (todayItems.some((x) => x.kind === 'strength')) return 'Heute ist Krafttraining geplant, die Abendroutine entfällt deshalb.';
+    return null;
+  });
 
   async function startItem(it: PlannedItem) {
     if (it.kind === 'strength') {
@@ -64,8 +68,7 @@
     today = await getCheckIn(profile.id);
     history = await checkinHistory(profile.id, 40);
     ready = today ? readiness(today, history, profile) : null;
-    morningLog = await getRoutineLog(profile.id, 'morning');
-    morningDays = await routineDays(profile.id, 'morning', 7);
+    cardKey++;
     loaded = true;
   }
   onMount(loadCheckIn);
@@ -131,7 +134,7 @@
     if (saved && first) autoStartMorning();
   }} />
 {:else if editRoutine}
-  <RoutineEditor {profile} kind="morning" onclose={async () => { editRoutine = false; await loadCheckIn(); window.scrollTo(0, 0); }} />
+  <RoutineEditor {profile} kind={editRoutine} onclose={async () => { editRoutine = null; await loadCheckIn(); window.scrollTo(0, 0); }} />
 {:else}
 <main>
   <p class="muted small">{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
@@ -169,28 +172,9 @@
   {#each hints as h (h)}<div class="card warn"><p class="small">{h}</p></div>{/each}
 
   {#if loaded}
-    <div class="card routine">
-      <div class="rhead">
-        <h3>Morgenroutine</h3>
-        <span class="rdots" aria-label="Morgenroutine der letzten 7 Tage">
-          {#each morningDays as d (d.date)}<span class="rdot {d.status}" title={d.date}></span>{/each}
-        </span>
-      </div>
-      {#if morning.blocked}
-        <p class="small">Heute keine Routine – siehe Tagesform.</p>
-      {:else if morningLog?.status === 'done'}
-        <p class="small"><span class="done">✓ erledigt</span> · {Math.max(1, Math.round(morningLog.seconds / 60))} min</p>
-      {:else if morningLog && morningLog.status !== 'skipped' && resumeIndex(morningLog) < morningLog.items.length}
-        <p class="small">{morningLog.done.length} von {morningLog.items.length} Übungen gemacht.</p>
-        <button class="primary block" onclick={startMorning}>Fortsetzen</button>
-      {:else}
-        <p class="small">{routineSetup(profile, 'morning').items.length} Mobility-Übungen · ca. {routineMinutesLabel(morning.items)}{morning.gentle ? ' · heute sanfter' : ''}{morningLog?.status === 'skipped' ? ' · heute übersprungen' : ''}</p>
-        {#if ready?.caps.noTraining}<p class="small muted">Heute lieber ausruhen. Wenn du magst, geht die sanfte Version.</p>{/if}
-        {#if !today && routineSetup(profile, 'morning').autoStart}<p class="small muted">Startet automatisch nach dem Check-in.</p>{/if}
-        <button class={today ? 'primary block' : 'block'} onclick={startMorning}>{morningLog?.status === 'skipped' ? 'Doch noch starten' : 'Jetzt starten'}</button>
-      {/if}
-      <button class="ghost" onclick={() => (editRoutine = true)}>Übungen anpassen</button>
-    </div>
+    {#key cardKey}
+      <RoutineCard {profile} kind="morning" {ready} hasCheckIn={!!today} onedit={() => (editRoutine = 'morning')} />
+    {/key}
   {/if}
 
   {#if c.status === 'restricted'}
@@ -236,6 +220,12 @@
     {/if}
     <button class="ghost" onclick={() => (app.view = 'week')}>Zur Woche</button>
   </div>
+
+  {#if loaded}
+    {#key cardKey}
+      <RoutineCard {profile} kind="evening" {ready} restDay={eveningRest} hasCheckIn={!!today} onedit={() => (editRoutine = 'evening')} />
+    {/key}
+  {/if}
 
   <h2>Dein Ausgangspunkt</h2>
   <div class="grid2">
@@ -297,13 +287,6 @@
   .plan-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .plan-item button { flex: none; min-height: 40px; padding: 8px 18px; }
   .done { color: var(--accent); font-weight: 600; font-size: 14px; }
-  .rhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .rhead h3 { margin: 0; }
-  .rdots { display: flex; gap: 4px; }
-  .rdot { width: 10px; height: 10px; border-radius: 50%; background: var(--surface-2); }
-  .rdot.done { background: var(--accent); }
-  .rdot.partial, .rdot.running { background: var(--accent-soft); outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
-  .routine .block { margin-top: 8px; }
   .trend { display: flex; gap: 5px; justify-content: center; margin: 4px 0 12px; }
   .tdot { width: 14px; height: 14px; border-radius: 50%; background: var(--surface-2); }
   .tdot.green { background: var(--accent); }

@@ -1,7 +1,10 @@
-// Tagesroutinen (M8): Mobility-Katalog, Animationen, Standard-Morgenroutine und Anpassung an die Tagesform.
+// Tagesroutinen (M8): Übungskatalog (Mobility + lockere Kraft), Animationen, Standardroutinen
+// und Anpassung an die Tagesform.
+// Abends: immer gleiche Ganzkörper-Übungen, 2 Runden 40/20 s, bewusst 3–4 Wdh. vor dem Versagen –
+// Konstanz und Bewegungsqualität; der Muskelerhalt kommt aus den intensiven Einheiten (Spiering 2021).
 // Morgens keine endgradige Lendenwirbel-Beugung (Bandscheiben sind nach dem Schlaf prall gefüllt,
 // Snook 1998) – deshalb Hüfte, Brustwirbelsäule, Schultern, Sprunggelenke und Atmung.
-import type { Motion, Pose } from './figure';
+import { plank, type Motion, type Pose } from './figure';
 import type { Light } from './readiness';
 import type { Profile, RoutineItem, RoutineKind, RoutineSetup } from './types';
 
@@ -16,6 +19,10 @@ export interface MobilityExercise {
   /** pro Seite: Dauer gilt je Seite, dazwischen Seitenwechsel */
   unilateral: boolean;
   defaultSec: number;
+  /** lockere Kraftübung (nur Abendroutine) */
+  strength?: boolean;
+  /** Animation aus dem Kraftkatalog, sonst eigene (gleiche ID) */
+  anim?: string;
 }
 
 export const MOBILITY: MobilityExercise[] = [
@@ -93,12 +100,71 @@ export const MOBILITY: MobilityExercise[] = [
     id: 'mobSideBend', name: 'Seitneigung im Stand', area: 'Flanke', unilateral: false, defaultSec: 30,
     short: 'Arme hoch, sanft zur Seite',
     cues: ['Füße hüftbreit, Arme über den Kopf', 'Langsam zu einer Seite neigen, Becken bleibt mittig', 'Seiten abwechseln']
+  },
+  {
+    id: 'rtPushup', name: 'Liegestütz', area: 'Brust, Schultern, Arme', unilateral: false, defaultSec: 40, strength: true, anim: 'pushup',
+    short: 'Ruhiges Tempo · 3–4 Wdh. Luft lassen',
+    cues: ['Hände etwas breiter als die Schultern, Körper gerade wie ein Brett', 'Brust kontrolliert Richtung Boden, kräftig hochdrücken', 'Vor dem Anstrengen aufhören – zwischendurch kurz ausruhen ist okay']
+  },
+  {
+    id: 'rtPushupIncline', name: 'Liegestütz erhöht (Sofa)', area: 'Brust, Schultern, Arme', unilateral: false, defaultSec: 40, strength: true, anim: 'pushupIncline',
+    short: 'Ruhiges Tempo · 3–4 Wdh. Luft lassen',
+    cues: ['Hände auf Sofakante oder Tisch, Körper gerade', 'Brust zur Kante, kräftig wegdrücken']
+  },
+  {
+    id: 'rtBandRow', name: 'Rudern mit Band (stehend)', area: 'Rücken, Bizeps', unilateral: false, defaultSec: 40, strength: true, anim: 'bandRowSa',
+    short: 'Schulterblätter zusammen · 3–4 Wdh. Luft lassen',
+    cues: ['Band an Türgriff (Tür geschlossen) oder Tischbein befestigen', 'Ellbogen nah am Körper nach hinten ziehen, Schulterblätter zusammen', 'Langsam zurück, Schultern bleiben tief']
+  },
+  {
+    id: 'rtBandRowSeated', name: 'Rudern mit Band (sitzend)', area: 'Rücken, Bizeps', unilateral: false, defaultSec: 40, strength: true, anim: 'bandRowSeated',
+    short: 'Schulterblätter zusammen · 3–4 Wdh. Luft lassen',
+    cues: ['Sitzen, Beine gestreckt, Band um die Füße', 'Aufrecht bleiben, Ellbogen nach hinten ziehen', 'Langsam zurück']
+  },
+  {
+    id: 'rtGobletSquat', name: 'Kniebeuge mit Kettlebell', area: 'Beine, Po', unilateral: false, defaultSec: 40, strength: true, anim: 'gobletSquat',
+    short: 'Langsam runter · 3–4 Wdh. Luft lassen',
+    cues: ['Kettlebell vor der Brust, Füße schulterbreit', 'Hüfte nach hinten-unten, Knie zeigen über die Zehen', 'Fersen bleiben am Boden, aufrecht hochdrücken']
+  },
+  {
+    id: 'rtAirSquat', name: 'Kniebeuge ohne Gewicht', area: 'Beine, Po', unilateral: false, defaultSec: 40, strength: true, anim: 'rtAirSquat',
+    short: 'Langsam runter · 3–4 Wdh. Luft lassen',
+    cues: ['Füße schulterbreit, Arme nach vorn', 'Hüfte nach hinten-unten, Knie über die Zehen', 'Fersen bleiben am Boden']
+  },
+  {
+    id: 'rtSplitSquat', name: 'Ausfallschritt am Platz', area: 'Beine, Po', unilateral: true, defaultSec: 20, strength: true, anim: 'splitSquat',
+    short: 'Hinteres Knie Richtung Boden · 3–4 Wdh. Luft lassen',
+    cues: ['Großer Schritt, Oberkörper aufrecht', 'Hinteres Knie langsam Richtung Boden, vorderes Knie über dem Fuß', 'Zeit gilt je Bein']
+  },
+  {
+    id: 'rtBridge', name: 'Hüftheben', area: 'Po, hintere Oberschenkel', unilateral: false, defaultSec: 40, strength: true, anim: 'rtBridge',
+    short: 'Oben kurz halten · 3–4 Wdh. Luft lassen',
+    cues: ['Rückenlage, Füße hüftbreit aufgestellt', 'Po anspannen und Hüfte hochschieben, bis Knie–Hüfte–Schulter eine Linie bilden', 'Oben 1 s halten, langsam ablassen']
+  },
+  {
+    id: 'rtPlank', name: 'Unterarmstütz', area: 'Rumpf', unilateral: false, defaultSec: 40, strength: true,
+    short: 'Körper gerade, ruhig atmen',
+    cues: ['Ellbogen unter den Schultern, Körper gerade wie ein Brett', 'Po und Bauch leicht anspannen, nicht ins Hohlkreuz', 'Wird es zu schwer: Knie ablegen']
+  },
+  {
+    id: 'rtSidePlank', name: 'Seitstütz', area: 'Rumpf seitlich', unilateral: true, defaultSec: 20, strength: true,
+    short: 'Hüfte hoch, Körper gerade',
+    cues: ['Ellbogen unter der Schulter, Füße übereinander', 'Hüfte hoch, Körper bildet eine Linie', 'Zu schwer: unteres Knie ablegen · Zeit gilt je Seite']
+  },
+  {
+    id: 'rtDeadBug', name: 'Käfer (Dead Bug)', area: 'Rumpf', unilateral: false, defaultSec: 40, strength: true, anim: 'deadBug',
+    short: 'Rücken bleibt am Boden',
+    cues: ['Rückenlage, Arme zur Decke, Knie über der Hüfte', 'Gegenarm und -bein langsam strecken, Rücken bleibt am Boden', 'Seiten abwechseln']
   }
 ];
 
 export const MOBILITY_BY_ID: Record<string, MobilityExercise> = Object.fromEntries(MOBILITY.map((m) => [m.id, m]));
 
 export const ROUTINE_LABELS: Record<RoutineKind, string> = { morning: 'Morgenroutine', evening: 'Abendroutine' };
+
+/** Welche Übungen in welcher Routine wählbar sind: morgens nur Mobility, abends alles. */
+export const routineCatalog = (kind: RoutineKind) => MOBILITY.filter((m) => kind === 'evening' || !m.strength);
+export const animId = (id: string) => MOBILITY_BY_ID[id]?.anim ?? id;
 
 const item = (id: string): RoutineItem => ({ id, sec: MOBILITY_BY_ID[id]!.defaultSec });
 
@@ -108,45 +174,82 @@ export const DEFAULT_MORNING: RoutineItem[] = [
   'mobThoracicRot', 'mobBandDislocate', 'mobDeepSquat', 'mobBreathing'
 ].map(item);
 
-export function routineSetup(p: Profile, kind: RoutineKind): RoutineSetup {
-  const s = p.routines?.[kind];
-  if (s) return { ...s, items: s.items.filter((x) => MOBILITY_BY_ID[x.id]) };
-  return { items: kind === 'morning' ? DEFAULT_MORNING.map((x) => ({ ...x })) : [], autoStart: true };
+/** Standard abends: 5 Übungen × 2 Runden, 40 s Arbeit / 20 s Pause ≈ 10 min, Push/Pull/Beine/Hüfte/Rumpf. */
+export const DEFAULT_EVENING: RoutineItem[] = ['rtPushup', 'rtBandRow', 'rtGobletSquat', 'rtBridge', 'rtPlank'].map(item);
+export const EVENING_ROUNDS = 2;
+export const MAX_EVENING = 5;
+export const EVENING_REST = 20;
+
+export function defaultSetup(kind: RoutineKind): RoutineSetup {
+  return kind === 'morning'
+    ? { items: DEFAULT_MORNING.map((x) => ({ ...x })), autoStart: true }
+    : { items: DEFAULT_EVENING.map((x) => ({ ...x })), autoStart: false, rounds: EVENING_ROUNDS, restSec: EVENING_REST };
 }
 
-/** Vorlauf vor jeder Übung (Position einnehmen) und Seitenwechsel – wie im Player. */
+export function routineSetup(p: Profile, kind: RoutineKind): RoutineSetup {
+  const s = p.routines?.[kind];
+  if (s) {
+    const items = s.items.filter((x) => MOBILITY_BY_ID[x.id]);
+    return { ...defaultSetup(kind), ...s, items: kind === 'evening' ? items.slice(0, MAX_EVENING) : items };
+  }
+  return defaultSetup(kind);
+}
+
+/** Vorlauf vor der ersten Übung (Position einnehmen) und Seitenwechsel – wie im Player. */
 export const COUNT_IN_SEC = 6;
 export const SWITCH_SEC = 5;
 
-export function itemSeconds(it: RoutineItem): number {
+/** Schlüssel eines Schritts im Ablauf (gleiche Übung in Runde 2 ist ein eigener Schritt). */
+export const stepKey = (it: RoutineItem) => (it.round ? `${it.id}#${it.round}` : it.id);
+
+/** Ablauf: Übungen × Runden. */
+export function routineSequence(items: RoutineItem[], rounds = 1): RoutineItem[] {
+  if (rounds <= 1) return items.map((x) => ({ id: x.id, sec: x.sec }));
+  return Array.from({ length: rounds }, (_, r) => items.map((x) => ({ id: x.id, sec: x.sec, round: r + 1 }))).flat();
+}
+
+export function itemSeconds(it: RoutineItem, before = COUNT_IN_SEC): number {
   const ex = MOBILITY_BY_ID[it.id];
   if (!ex) return 0;
-  return COUNT_IN_SEC + (ex.unilateral ? it.sec * 2 + SWITCH_SEC : it.sec);
+  return before + (ex.unilateral ? it.sec * 2 + SWITCH_SEC : it.sec);
 }
 
-export function routineSeconds(items: RoutineItem[]): number {
-  return items.reduce((a, x) => a + itemSeconds(x), 0);
+/** Dauer eines Ablaufs: Vorlauf vor der ersten Übung, `restSec` vor jeder weiteren. */
+export function routineSeconds(seq: RoutineItem[], restSec = COUNT_IN_SEC): number {
+  return seq.reduce((a, x, i) => a + itemSeconds(x, i === 0 ? COUNT_IN_SEC : restSec), 0);
 }
 
-export function routineMinutesLabel(items: RoutineItem[]): string {
-  const m = Math.max(1, Math.round(routineSeconds(items) / 60));
+export function minutesLabel(sec: number): string {
+  const m = Math.max(1, Math.round(sec / 60));
   return `${m} ${m === 1 ? 'Minute' : 'Minuten'}`;
 }
 
 export const GENTLE_FACTOR = 0.65;
 
+export interface TodayRoutine {
+  /** Ablauf inkl. Runden */
+  items: RoutineItem[];
+  restSec: number;
+  gentle: boolean;
+  blocked: boolean;
+  autoStartOk: boolean;
+}
+
 /**
- * Tagesform → Routine: Grün/Gelb normal, Rot oder krank sanfter (kürzere Haltezeiten),
- * Warnzeichen → keine Routine. Übungen und Reihenfolge bleiben immer gleich.
+ * Tagesform → Routine: Grün/Gelb normal, Rot oder krank sanfter, Warnzeichen → keine Routine.
+ * Sanft = gleiche Übungen; mehrere Runden → nur 1 Runde, sonst ca. 65 % der Zeit.
  */
 export function routineForToday(
-  items: RoutineItem[],
+  setup: RoutineSetup,
   day: { light: Light; hardStop: boolean; noTraining: boolean } | null
-): { items: RoutineItem[]; gentle: boolean; blocked: boolean; autoStartOk: boolean } {
-  if (day?.hardStop) return { items: [], gentle: false, blocked: true, autoStartOk: false };
+): TodayRoutine {
+  const restSec = setup.restSec ?? COUNT_IN_SEC;
+  if (day?.hardStop) return { items: [], restSec, gentle: false, blocked: true, autoStartOk: false };
   const gentle = !!day && (day.light === 'red' || day.noTraining);
-  const out = gentle ? items.map((x) => ({ ...x, sec: Math.max(15, Math.round((x.sec * GENTLE_FACTOR) / 5) * 5) })) : items;
-  return { items: out, gentle, blocked: false, autoStartOk: !day?.noTraining };
+  const rounds = setup.rounds ?? 1;
+  let items = setup.items;
+  if (gentle && rounds <= 1) items = items.map((x) => ({ ...x, sec: Math.max(15, Math.round((x.sec * GENTLE_FACTOR) / 5) * 5) }));
+  return { items: routineSequence(items, gentle ? 1 : rounds), restSec, gentle, blocked: false, autoStartOk: !day?.noTraining };
 }
 
 // ---------- Animationen ----------
@@ -297,7 +400,18 @@ const sideBend = (): Motion => ({
   dur: [2, 2], hold: [1.5, 1.5], tempo: 'langsam · 2 s halten'
 });
 
+const forearmPlank = (side: boolean): Motion => {
+  const ankle: V = [-77, -3];
+  const pose = (sh: V): Pose => {
+    const { hip, t } = plank(ankle, sh);
+    return { hip, t, an: [0, 90], af: side ? [178, 178] : [0, 90], ln: { to: ankle, foot: 20 } };
+  };
+  return { frames: [pose([0, -16]), pose([0, -17])], dur: [2, 2], hold: [1, 1], tempo: side ? 'Hüfte hoch halten' : 'Körper gerade halten' };
+};
+
 export const MOBILITY_MOTIONS: Record<string, Motion> = {
+  rtPlank: forearmPlank(false),
+  rtSidePlank: forearmPlank(true),
   mobAnkleRock: ankleRock(),
   mobRockBack: rockBack(),
   mobHipFlexor: hipFlexor(),

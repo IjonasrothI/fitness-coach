@@ -1,6 +1,7 @@
 // Tagesroutinen speichern (M8): ein Eintrag je Profil, Tag und Routine.
 import { db, plain, type CoachDB } from './db';
 import { todayKey } from './readiness';
+import { stepKey } from './mobility';
 import type { RoutineItem, RoutineKind, RoutineLog } from './types';
 
 export const routineId = (pid: string, date: string, kind: RoutineKind) => `${pid}:${date}:${kind}`;
@@ -13,10 +14,10 @@ export async function saveRoutineLog(l: RoutineLog, d: CoachDB = db): Promise<vo
   await d.routines.put(plain(l));
 }
 
-export function newRoutineLog(pid: string, kind: RoutineKind, items: RoutineItem[], gentle: boolean, date = todayKey()): RoutineLog {
+export function newRoutineLog(pid: string, kind: RoutineKind, items: RoutineItem[], gentle: boolean, date = todayKey(), restSec?: number): RoutineLog {
   return {
     id: routineId(pid, date, kind), profileId: pid, date, kind, startedAt: new Date().toISOString(),
-    status: 'running', items: plain(items), done: [], skipped: [], gentle, seconds: 0
+    status: 'running', items: plain(items), done: [], skipped: [], gentle, seconds: 0, restSec
   };
 }
 
@@ -34,6 +35,6 @@ export async function routineDays(pid: string, kind: RoutineKind, days = 7, now 
 
 /** Index der ersten noch offenen Übung (für „Fortsetzen"). */
 export function resumeIndex(l: RoutineLog): number {
-  const i = l.items.findIndex((x) => !l.done.includes(x.id) && !l.skipped.includes(x.id));
+  const i = l.items.findIndex((x) => !l.done.includes(stepKey(x)) && !l.skipped.includes(stepKey(x)));
   return i < 0 ? l.items.length : i;
 }

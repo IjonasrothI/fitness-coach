@@ -2,14 +2,14 @@
   import { onDestroy, onMount } from 'svelte';
   import ExerciseAnim from '../components/ExerciseAnim.svelte';
   import WorkTimer from '../components/WorkTimer.svelte';
-  import { COUNT_IN_SEC, MOBILITY_BY_ID, ROUTINE_LABELS, routineSeconds } from '../lib/mobility';
+  import { animId, COUNT_IN_SEC, MOBILITY_BY_ID, ROUTINE_LABELS, routineSeconds, stepKey } from '../lib/mobility';
   import { getRoutineLog, newRoutineLog, resumeIndex, saveRoutineLog } from '../lib/routineStore';
   import { keepAwake, setVoice, unlockAudio, voiceOn } from '../lib/sound';
   import { app } from '../lib/state.svelte';
   import type { Profile, RoutineItem, RoutineKind, RoutineLog } from '../lib/types';
 
-  interface Props { profile: Profile; kind: RoutineKind; items: RoutineItem[]; gentle: boolean }
-  let { profile, kind, items, gentle }: Props = $props();
+  interface Props { profile: Profile; kind: RoutineKind; items: RoutineItem[]; gentle: boolean; restSec: number }
+  let { profile, kind, items, gentle, restSec }: Props = $props();
 
   let log = $state<RoutineLog | null>(null);
   let idx = $state(0);
@@ -28,7 +28,7 @@
       idx = resumeIndex(existing);
       startedMs = Date.now() - existing.seconds * 1000;
     } else {
-      log = newRoutineLog(profile.id, kind, items, gentle);
+      log = newRoutineLog(profile.id, kind, items, gentle, undefined, restSec);
     }
     if (idx >= log.items.length) { idx = 0; log.done = []; log.skipped = []; }
     await saveRoutineLog(log);
@@ -38,7 +38,12 @@
   let list = $derived(log?.items ?? []);
   let cur = $derived(list[idx]);
   let ex = $derived(cur ? MOBILITY_BY_ID[cur.id] : undefined);
-  let leftMin = $derived(Math.max(1, Math.round(routineSeconds(list.slice(idx)) / 60)));
+  let rest = $derived(log?.restSec ?? COUNT_IN_SEC);
+  let leftMin = $derived(Math.max(1, Math.round(routineSeconds(list.slice(idx), rest) / 60)));
+  let rounds = $derived(Math.max(1, ...list.map((x) => x.round ?? 1)));
+  let doneCount = $derived(log ? list.filter((x) => log!.done.includes(stepKey(x))).length : 0);
+  const isDone = (it: RoutineItem) => !!log?.done.includes(stepKey(it));
+  const isSkipped = (it: RoutineItem) => !!log?.skipped.includes(stepKey(it));
 
   async function persist() {
     if (!log) return;
@@ -48,7 +53,7 @@
 
   async function next(how: 'done' | 'skip') {
     if (!log || !cur) return;
-    const id = cur.id;
+    const id = stepKey(cur);
     log.done = log.done.filter((x) => x !== id);
     log.skipped = log.skipped.filter((x) => x !== id);
     (how === 'done' ? log.done : log.skipped).push(id);
@@ -64,7 +69,7 @@
 
   async function finish() {
     if (!log) return;
-    log.status = log.done.length === 0 ? 'skipped' : log.done.length === list.length ? 'done' : 'partial';
+    log.status = doneCount === 0 ? 'skipped' : doneCount === list.length ? 'done' : 'partial';
     log.finishedAt = new Date().toISOString();
     await persist();
     void keepAwake(false);
@@ -73,7 +78,7 @@
 
   async function skipToday() {
     if (!log) return;
-    if (log.done.length === 0) {
+    if (doneCount === 0) {
       log.status = 'skipped';
       log.finishedAt = new Date().toISOString();
       await persist();
@@ -95,25 +100,26 @@
     <p class="muted">Lade …</p>
   {:else if phase === 'run' && cur && ex}
     <div class="top">
-      <button class="ghost" onclick={skipToday}>{log.done.length ? 'Beenden' : 'Heute überspringen'}</button>
+      <button class="ghost" onclick={skipToday}>{doneCount ? 'Beenden' : 'Heute überspringen'}</button>
       <button class="ghost" onclick={toggleVoice} aria-pressed={voice}>{voice ? 'Stimme an' : 'Stimme aus'}</button>
     </div>
-    <p class="small muted meta">{ROUTINE_LABELS[kind]}{log.gentle ? ' · sanft' : ''} · Übung {idx + 1} von {list.length} · noch ca. {leftMin} min</p>
+    <p class="small muted meta">{ROUTINE_LABELS[kind]}{log.gentle ? ' · sanft' : ''} · {rounds > 1 ? `Runde ${cur.round ?? 1} von ${rounds} · ` : ''}Übung {idx + 1} von {list.length} · noch ca. {leftMin} min</p>
     <div class="dots" aria-hidden="true">
-      {#each list as it, i (it.id)}
-        <span class:done={log.done.includes(it.id)} class:skip={log.skipped.includes(it.id)} class:cur={i === idx}></span>
+      {#each list as it, i (stepKey(it))}
+        <span class:done={isDone(it)} class:skip={isSkipped(it)} class:cur={i === idx}></span>
       {/each}
     </div>
     <h1 class="name">{ex.name}</h1>
     {#key idx}
-      <WorkTimer seconds={cur.sec} sides={ex.unilateral ? 2 : 1} countIn={COUNT_IN_SEC} note={ex.short} ondone={() => next('done')} />
+      <WorkTimer seconds={cur.sec} sides={ex.unilateral ? 2 : 1} countIn={idx === 0 ? COUNT_IN_SEC : rest}
+        countLabel={idx === 0 || rest <= COUNT_IN_SEC ? "Gleich geht's los …" : 'Pause – Position einnehmen'} note={ex.short} ondone={() => next('done')} />
     {/key}
     <div class="seg" role="tablist" aria-label="Darstellung">
       <button role="tab" aria-selected={view === 'move'} class:on={view === 'move'} onclick={() => (view = 'move')}>Bewegung</button>
       <button role="tab" aria-selected={view === 'cues'} class:on={view === 'cues'} onclick={() => (view = 'cues')}>So geht's</button>
     </div>
     {#if view === 'move'}
-      <ExerciseAnim id={cur.id} label={ex.name} />
+      <ExerciseAnim id={animId(cur.id)} label={ex.name} />
     {:else}
       <ul class="cues">{#each ex.cues as c (c)}<li>{c}</li>{/each}</ul>
       <p class="small muted">Bereich: {ex.area}{ex.unilateral ? ' · Zeit gilt je Seite' : ''}</p>
@@ -125,14 +131,14 @@
   {:else}
     <h1>{log.status === 'done' ? 'Geschafft ✓' : 'Für heute beendet'}</h1>
     <div class="card accent">
-      <p><b>{log.done.length} von {list.length} Übungen</b> · {mins(log.seconds)} min</p>
+      <p><b>{doneCount} von {list.length} Übungen</b> · {mins(log.seconds)} min</p>
       <p class="small">{log.status === 'done'
-        ? 'Guter Start in den Tag. Regelmäßigkeit zählt mehr als jede einzelne Einheit.'
+        ? (kind === 'morning' ? 'Guter Start in den Tag. Regelmäßigkeit zählt mehr als jede einzelne Einheit.' : 'Schöner Abschluss des Tages. Genau diese Regelmäßigkeit bringt dich weiter.')
         : 'Auch ein Teil zählt – Hauptsache, die Gewohnheit bleibt.'}</p>
     </div>
     <ul class="sum">
-      {#each list as it (it.id)}
-        <li class:skip={!log.done.includes(it.id)}>{log.done.includes(it.id) ? '✓' : '–'} {MOBILITY_BY_ID[it.id]?.name}</li>
+      {#each list as it (stepKey(it))}
+        <li class:skip={!isDone(it)}>{isDone(it) ? '✓' : '–'} {MOBILITY_BY_ID[it.id]?.name}{it.round ? ` · Runde ${it.round}` : ''}</li>
       {/each}
     </ul>
     <button class="primary block big" onclick={close}>Weiter zum Tag</button>

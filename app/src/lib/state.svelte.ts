@@ -1,7 +1,7 @@
 import { db, getMeta, saveProfile, setMeta, deleteProfile as dbDelete } from './db';
 import { backupDue } from './backup';
 import { activeSession } from './training';
-import type { PlannedItem, Profile, StrengthSession } from './types';
+import type { PlannedItem, Profile, RoutineItem, RoutineKind, StrengthSession } from './types';
 
 export type View = 'home' | 'week' | 'strength' | 'endurance' | 'progress' | 'more';
 
@@ -23,6 +23,8 @@ class AppState {
   library = $state(false);
   /** Krafteinheit aus Heute/Woche: Startbildschirm mit vorgewählter Dauer öffnen */
   strengthMinutes = $state<number | null>(null);
+  /** Laufende Tagesroutine (M8, Vollbild) */
+  routine = $state<{ kind: RoutineKind; items: RoutineItem[]; gentle: boolean } | null>(null);
 
   active = $derived(this.profiles.find((p) => p.id === this.activeId) ?? null);
   /** Erinnerung 14 Tage nach letzter Sicherung bzw. nach Anlegen des ersten Profils */

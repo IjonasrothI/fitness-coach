@@ -171,7 +171,7 @@ describe('Training-Service (DB)', async () => {
     await saveProfile(p, d);
     await ensureStates(p, d);
     const b = await createBackup(d);
-    expect(b.version).toBe(5);
+    expect(b.version).toBe(6);
     expect(b.patternStates?.length).toBe(12);
     const e = new CoachDB('t-bk2r-' + Math.random());
     await restoreBackup(parseBackup(JSON.stringify(b)), e);

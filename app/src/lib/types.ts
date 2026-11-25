@@ -108,6 +108,8 @@ export interface Profile {
   cycleTrackingConsent: boolean;
   /** M7: steuert Format-Mix, Länge und Rückmeldungen (fehlt bei alten Profilen) */
   motivation?: Motivation;
+  /** M8: feste Tagesroutinen (fehlt → Standard) */
+  routines?: Partial<Record<RoutineKind, RoutineSetup>>;
   createdAt: string;
   updatedAt: string;
 }
@@ -388,4 +390,39 @@ export interface WeekPlan {
   why: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------- M8: Tagesroutinen ----------
+
+export type RoutineKind = 'morning' | 'evening';
+
+export interface RoutineItem {
+  /** Übungs-ID aus dem Mobility-Katalog */
+  id: string;
+  /** Dauer in s (bei einseitigen Übungen je Seite) */
+  sec: number;
+}
+
+export interface RoutineSetup {
+  items: RoutineItem[];
+  /** direkt nach dem Check-in starten */
+  autoStart: boolean;
+}
+
+export interface RoutineLog {
+  /** `${profileId}:${date}:${kind}` */
+  id: string;
+  profileId: string;
+  date: string;
+  kind: RoutineKind;
+  startedAt: string;
+  finishedAt?: string;
+  status: 'running' | 'done' | 'partial' | 'skipped';
+  /** Übungen in der Reihenfolge, wie sie gemacht wurden */
+  items: RoutineItem[];
+  done: string[];
+  skipped: string[];
+  gentle: boolean;
+  /** tatsächliche Übungszeit in s */
+  seconds: number;
 }

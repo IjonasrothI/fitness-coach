@@ -1,6 +1,7 @@
 // Bewegungsabläufe je Übung (M7): Keyframes der Strichfigur + Requisiten (Sofa, Band, Kettlebell …).
 // Tempo nach den Hinweisen im Katalog (z. B. 3 s absenken, Pause in der Dehnung).
 import { plank, tilt, type Motion, type Pose, type Prop } from './figure';
+import { MOBILITY_MOTIONS } from './mobility';
 
 // ---------- Bausteine ----------
 
@@ -389,5 +390,6 @@ export const MOTIONS: Record<string, Motion> = {
   deadBug: deadBug(),
   reverseCrunch: reverseCrunch(),
   hollowRock: hollow(),
-  dragonFlagNeg: dragonFlag()
+  dragonFlagNeg: dragonFlag(),
+  ...MOBILITY_MOTIONS
 };

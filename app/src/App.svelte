@@ -14,6 +14,7 @@
   import Player from './views/Player.svelte';
   import Placement from './views/Placement.svelte';
   import ExerciseLibrary from './views/ExerciseLibrary.svelte';
+  import RoutinePlayer from './views/RoutinePlayer.svelte';
 
   const { needRefresh, updateServiceWorker } = useRegisterSW();
 
@@ -41,6 +42,8 @@
   {#key app.session.id}
     <Player profile={app.active} initial={app.session} />
   {/key}
+{:else if app.active && app.routine}
+  <RoutinePlayer profile={app.active} kind={app.routine.kind} items={app.routine.items} gentle={app.routine.gentle} />
 {:else if app.active && app.placement}
   {#key app.placement}
     <Placement profile={app.active} half={app.placement} />

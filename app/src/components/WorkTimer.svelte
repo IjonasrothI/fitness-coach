@@ -40,7 +40,7 @@
   }
 
   function onSecond(left: number) {
-    if (phase === 'count' && left > 0) tick();
+    if (phase === 'count' && left > 0 && left <= 3) tick();
     if (phase === 'work') {
       if (left === 10 && seconds >= 30) say('Noch zehn Sekunden');
       if (left <= 3 && left > 0) tick();
@@ -90,6 +90,7 @@
   }
   function stopEarly() {
     if (finished) return;
+    if (phase === 'count') { paused = false; advance(); return; }
     finished = true;
     beep(1);
     ondone();
@@ -116,7 +117,7 @@
   </p>
   <div class="row">
     <button onclick={togglePause}>{paused ? 'Weiter' : 'Pause'}</button>
-    <button onclick={stopEarly}>Fertig</button>
+    <button onclick={stopEarly}>{phase === 'count' ? 'Jetzt starten' : 'Fertig'}</button>
   </div>
 </div>
 

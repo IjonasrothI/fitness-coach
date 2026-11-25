@@ -216,6 +216,7 @@ Tests werden automatisch eingeplant, in Deload-Wochen bzw. ausgeruhten Tagen, ni
 | ✅ M5 | Wochenplaner mit flexibler Zeit, Volumensteuerung, Deload, Änderungsprotokoll + Überschreiben | Volle Feedback-Loops |
 | M6 ✅ | Fortschrittsdiagramme, Lernen pro Person, Plateau-Erkennung, Blockwechsel | Langfristige Personalisierung |
 | M7 ✅ | Neuer Kraft-Player: Animationen, Muskelkarte, Zeit-Sätze, Zirkel, Motivationsprofil (siehe 13) | Training macht Spaß, Hürde sinkt |
+| M8 🔶 | Tagesroutinen: Morgen-Mobility nach dem Check-in ✅, Abendroutine (Übungen werden vorher abgestimmt) (siehe 14) | Konstanz durch tägliche Gewohnheit |
 | später | Ernährung (siehe 11), quartalsweise Literatur-Updates | |
 
 Jeder Meilenstein wird mit Unit-Tests für die Engine und einem Test auf dem iPhone abgeschlossen.
@@ -262,3 +263,15 @@ Leitidee: Wer Krafttraining nicht mag, bleibt dran, wenn der Einstieg leicht ist
 - „Nur 10 Minuten“ mit Angebot zur Verlängerung, Rekorde, Daumen hoch/runter, Gesichter-Skala für die Reserve, Sprachansagen (abschaltbar).
 - Zirkel-Sätze zählen fürs Wochenvolumen, verändern Stufen aber nur bei > 30 Wdh. (K6) und fließen nicht in die Kraftkurven ein.
 - Wochenplan: Einheiten bewusst unterschiedlich lang (z. B. 30 / 35 / 40 min bei 40 min Zeit); die Zeitangabe ist eine Obergrenze.
+
+## 14. M8: Tagesroutinen
+
+**Literatur (Kurzfassung):** Tageszeit ändert langfristige Kraftzuwächse kaum (Grgic 2019, Bruggisser 2023); entscheidend ist Regelmäßigkeit zur gleichen Zeit. Morgens entsteht die Gewohnheit schneller (Fournier 2017). Morgens keine endgradige Rumpfbeugung (Snook 1998). Abendtraining stört den Schlaf nicht, außer sehr hart < 1 h vor dem Schlafen (Stutz 2019).
+
+**Umgesetzt (Morgenroutine)**
+- Startet direkt nach dem ersten Check-in des Tages (abschaltbar), jederzeit pausieren, zurück, überspringen oder beenden; Fortsetzen nach Abbruch.
+- Standard: 8 Mobility-Übungen, ca. 8–9 min (Sprunggelenk, Hüfte, Brustwirbelsäule, Schultern, tiefe Hocke, Atmung) – ohne Rumpfbeuge.
+- Übungen, Reihenfolge und Dauer frei anpassbar; sie bleiben täglich gleich, bis man sie ändert. Katalog mit 15 Übungen und eigenen Animationen.
+- Tagesform: Rot/krank → sanfte Version (gleiche Übungen, ca. 65 % der Zeit, kein Autostart bei krank); Warnzeichen → keine Routine.
+- Protokoll je Tag (erledigt/teilweise/übersprungen), 7-Tage-Punkte auf „Heute"; in der Sicherung enthalten.
+

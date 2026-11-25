@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type {
   ChangeLogEntry, CheckIn, WeekPlan, EnduranceSession, EnduranceTest, ExerciseFeedback, Meta, PatternState, Profile,
-  StrengthSession, WeightEntry
+  RoutineLog, StrengthSession, WeightEntry
 } from './types';
 
 export class CoachDB extends Dexie {
@@ -16,6 +16,7 @@ export class CoachDB extends Dexie {
   tests!: EntityTable<EnduranceTest, 'id'>;
   checkins!: EntityTable<CheckIn, 'id'>;
   weeks!: EntityTable<WeekPlan, 'id'>;
+  routines!: EntityTable<RoutineLog, 'id'>;
 
   constructor(name = 'fitness-coach') {
     super(name);
@@ -39,6 +40,9 @@ export class CoachDB extends Dexie {
     });
     this.version(5).stores({
       weeks: 'id, profileId, weekStart'
+    });
+    this.version(6).stores({
+      routines: 'id, profileId, date'
     });
   }
 }
@@ -70,7 +74,7 @@ export async function saveProfile(p: Profile, d: CoachDB = db): Promise<void> {
 }
 
 export async function deleteProfile(id: string, d: CoachDB = db): Promise<void> {
-  const tables = [d.profiles, d.weights, d.changes, d.patternStates, d.sessions, d.feedback, d.endurance, d.tests, d.checkins, d.weeks];
+  const tables = [d.profiles, d.weights, d.changes, d.patternStates, d.sessions, d.feedback, d.endurance, d.tests, d.checkins, d.weeks, d.routines];
   await d.transaction('rw', tables, async () => {
     await d.profiles.delete(id);
     for (const t of tables.slice(1)) await t.where('profileId').equals(id).delete();
